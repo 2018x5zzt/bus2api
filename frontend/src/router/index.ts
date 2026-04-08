@@ -53,7 +53,7 @@ const routes: RouteRecordRaw[] = [
         path: 'status',
         name: 'Status',
         component: () => import('@/views/status/StatusView.vue'),
-        meta: { title: '服务状态' },
+        meta: { title: '号池健康' },
       },
     ],
   },

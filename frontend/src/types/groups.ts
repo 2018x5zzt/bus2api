@@ -43,6 +43,23 @@ export interface AdminGroup extends Group {
   sort_order: number
 }
 
+export interface GroupPoolStatus {
+  group_id: number
+  group_name: string
+  platform: string
+  total_accounts: number
+  active_account_count: number
+  rate_limited_account_count: number
+  available_account_count: number
+  availability_ratio: number
+  status: 'healthy' | 'degraded' | 'down'
+}
+
+export interface GroupPoolStatusResponse {
+  checked_at: string
+  groups: GroupPoolStatus[]
+}
+
 export interface CreateGroupRequest {
   name: string
   description?: string | null

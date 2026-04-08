@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** Complete 2FA login */
   async function complete2FA(tempToken: string, code: string): Promise<void> {
-    const response = await authAPI.login2FA({ temp_token: tempToken, code })
+    const response = await authAPI.login2FA({ temp_token: tempToken, totp_code: code })
     user.value = response.user
     isAuthenticated.value = true
   }

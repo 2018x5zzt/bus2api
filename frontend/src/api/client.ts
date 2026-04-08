@@ -1,10 +1,33 @@
 /**
- * Axios HTTP client configured for xlabapi.top backend
+ * Axios HTTP client with API envelope unwrapping and token refresh support.
  */
 
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://xlabapi.top/api'
+
+interface ApiResponse<T> {
+  code: number
+  message: string
+  data?: T
+}
+
+interface RefreshTokenResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+}
+
+function isApiResponse(value: unknown): value is ApiResponse<unknown> {
+  return typeof value === 'object' && value !== null && 'code' in value
+}
+
+function clearStoredAuth(): void {
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('auth_user')
+  localStorage.removeItem('token_expires_at')
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -37,19 +60,36 @@ function onTokenRefreshed(token: string): void {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (isApiResponse(response.data)) {
+      if (response.data.code === 0) {
+        response.data = response.data.data
+        return response
+      }
+
+      return Promise.reject({
+        status: response.status,
+        code: response.data.code,
+        message: response.data.message || 'Unknown error',
+      })
+    }
+
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
+    const url = String(originalRequest?.url || '')
+    const isAuthEndpoint =
+      url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh')
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = localStorage.getItem('refresh_token')
 
-      if (!refreshToken) {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('auth_user')
-        localStorage.removeItem('token_expires_at')
-        window.location.href = '/login'
+      if (!refreshToken || isAuthEndpoint) {
+        clearStoredAuth()
+        if (!isAuthEndpoint) {
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
 
@@ -66,26 +106,34 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        })
+        const refreshResponse = await axios.post<ApiResponse<RefreshTokenResponse>>(
+          `${API_BASE_URL}/auth/refresh`,
+          { refresh_token: refreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        )
 
-        localStorage.setItem('auth_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
+        const refreshData = refreshResponse.data
+        if (!isApiResponse(refreshData) || refreshData.code !== 0 || !refreshData.data) {
+          throw new Error('Token refresh failed')
+        }
 
-        const expiresAt = Date.now() + data.expires_in * 1000
+        localStorage.setItem('auth_token', refreshData.data.access_token)
+        localStorage.setItem('refresh_token', refreshData.data.refresh_token)
+
+        const expiresAt = Date.now() + refreshData.data.expires_in * 1000
         localStorage.setItem('token_expires_at', String(expiresAt))
 
-        apiClient.defaults.headers.common.Authorization = `Bearer ${data.access_token}`
-        originalRequest.headers.Authorization = `Bearer ${data.access_token}`
+        apiClient.defaults.headers.common.Authorization = `Bearer ${refreshData.data.access_token}`
+        originalRequest.headers.Authorization = `Bearer ${refreshData.data.access_token}`
 
-        onTokenRefreshed(data.access_token)
+        onTokenRefreshed(refreshData.data.access_token)
         return apiClient(originalRequest)
       } catch {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('auth_user')
-        localStorage.removeItem('token_expires_at')
+        clearStoredAuth()
         window.location.href = '/login'
         return Promise.reject(error)
       } finally {

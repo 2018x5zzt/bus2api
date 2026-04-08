@@ -25,7 +25,7 @@ export interface TotpLoginResponse {
 
 export interface TotpLogin2FARequest {
   temp_token: string
-  code: string
+  totp_code: string
 }
 
 export type LoginResponse = AuthResponse | TotpLoginResponse
