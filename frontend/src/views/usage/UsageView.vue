@@ -27,7 +27,7 @@
               <td>{{ formatTokens(log.input_tokens) }}</td>
               <td>{{ formatTokens(log.output_tokens) }}</td>
               <td>{{ formatTokens(log.cache_read_tokens) }}</td>
-              <td class="cost-cell">${{ log.cost?.toFixed(6) ?? '0.00' }}</td>
+              <td class="cost-cell">${{ log.total_cost?.toFixed(6) ?? '0.00' }}</td>
               <td class="text-muted">{{ log.duration_ms ? log.duration_ms + 'ms' : '-' }}</td>
               <td class="text-muted">{{ formatTime(log.created_at) }}</td>
             </tr>

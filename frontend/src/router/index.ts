@@ -5,6 +5,13 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    title?: string
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   // ==================== Public Routes ====================
   {
@@ -14,7 +21,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: '登录' },
   },
 
-  // ==================== Console Routes ====================
+  // ==================== Console Routes (User) ====================
   {
     path: '/',
     component: () => import('@/layouts/ConsoleLayout.vue'),
@@ -68,7 +75,7 @@ const router = createRouter({
   },
 })
 
-/** Navigation guard: auth check */
+/** Navigation guard: auth + admin role check */
 let authInitialized = false
 
 router.beforeEach((to, _from, next) => {
@@ -86,7 +93,6 @@ router.beforeEach((to, _from, next) => {
   const requiresAuth = to.meta.requiresAuth !== false
 
   if (!requiresAuth) {
-    // Redirect authenticated users away from login
     if (authStore.isAuthenticated && to.path === '/login') {
       next('/dashboard')
       return

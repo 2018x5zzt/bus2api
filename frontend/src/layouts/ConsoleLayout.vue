@@ -8,14 +8,14 @@
           <span class="logo-text">Bus2API</span>
         </div>
         <button class="btn-ghost sidebar-toggle" @click="appStore.toggleSidebar">
-          <MenuIcon v-if="!appStore.sidebarCollapsed" :size="18" />
-          <MenuIcon v-else :size="18" />
+          <MenuIcon :size="18" />
         </button>
       </div>
 
       <nav class="sidebar-nav">
+        <!-- User navigation -->
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in userNavItems"
           :key="item.path"
           :to="item.path"
           class="nav-item"
@@ -69,7 +69,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-const navItems = computed(() => [
+const userNavItems = computed(() => [
   { path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
   { path: '/keys', label: t('nav.keys'), icon: KeyIcon },
   { path: '/usage', label: t('nav.usage'), icon: UsageIcon },
@@ -150,6 +150,7 @@ async function handleLogout(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
 }
 
 .nav-item {
