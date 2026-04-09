@@ -21,10 +21,14 @@
         />
       </div>
       <div class="filter-item">
-        <select v-model="filters.group_id" class="input input-sm" @change="fetchKeys">
-          <option value="">{{ t('keys.groupAll') }}</option>
-          <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-        </select>
+        <input
+          v-model.number="filters.group_id"
+          type="number"
+          class="input input-sm"
+          :placeholder="t('keys.groupId')"
+          min="0"
+          @change="fetchKeys"
+        />
       </div>
       <div class="filter-item">
         <select v-model="filters.status" class="input input-sm" @change="fetchKeys">
@@ -145,10 +149,13 @@
             </div>
             <div class="form-group flex-1">
               <label class="label">{{ t('keys.createDialog.group') }}</label>
-              <select v-model="newKey.group_id" class="input">
-                <option :value="null">{{ t('keys.createDialog.groupPlaceholder') }}</option>
-                <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
+              <input
+                v-model.number="newKey.group_id"
+                type="number"
+                class="input"
+                :placeholder="t('keys.createDialog.groupPlaceholder')"
+                min="0"
+              />
             </div>
           </div>
 
@@ -260,14 +267,13 @@ import {
   Key as KeyIcon,
 } from 'lucide-vue-next'
 import { keysAPI } from '@/api/keys'
-import type { ApiKey, Group } from '@/types'
+import type { ApiKey } from '@/types'
 
 const { t } = useI18n()
 
 const PAGE_SIZE = 20
 
 const keys = ref<ApiKey[]>([])
-const groups = ref<Group[]>([])
 const page = ref(1)
 const pageSize = PAGE_SIZE
 const total = ref(0)
@@ -360,16 +366,6 @@ async function fetchKeys(): Promise<void> {
   }
 }
 
-async function fetchGroups(): Promise<void> {
-  try {
-    const { apiClient } = await import('@/api/client')
-    const { data } = await apiClient.get<{ data: Group[] }>('/groups')
-    groups.value = (data as unknown as Group[]) ?? []
-  } catch {
-    // Groups may not be available for non-admin users
-  }
-}
-
 function resetNewKey(): void {
   newKey.name = ''
   newKey.quota = 0
@@ -434,7 +430,6 @@ function goPage(p: number): void {
 
 onMounted(() => {
   fetchKeys()
-  fetchGroups()
 })
 </script>
 

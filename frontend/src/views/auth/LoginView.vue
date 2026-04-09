@@ -3,7 +3,7 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <h1 class="login-logo">Bus2API</h1>
+        <h1 class="login-logo">{{ appStore.siteName }}</h1>
         <p class="login-subtitle">{{ t('login.title') }}</p>
       </div>
 

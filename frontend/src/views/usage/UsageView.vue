@@ -28,10 +28,13 @@
       </div>
       <div class="filter-item">
         <label class="filter-label">{{ t('usage.groupId') }}</label>
-        <select v-model="filters.group_id" class="input input-sm">
-          <option value="">{{ t('usage.filterAll') }}</option>
-          <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
-        </select>
+        <input
+          v-model.number="filters.group_id"
+          type="number"
+          class="input input-sm"
+          placeholder="ID"
+          min="0"
+        />
       </div>
       <div class="filter-item">
         <label class="filter-label">{{ t('usage.startDate') }}</label>
@@ -70,6 +73,7 @@
               <th>{{ t('usage.outputTokens') }}</th>
               <th>{{ t('usage.cacheTokens') }}</th>
               <th>{{ t('usage.actualCost') }}</th>
+              <th>{{ t('usage.rateMultiplier') }}</th>
               <th>{{ t('usage.billableCost') }}</th>
               <th>{{ t('usage.duration') }}</th>
               <th>{{ t('usage.time') }}</th>
@@ -84,6 +88,7 @@
               <td>{{ formatTokens(log.output_tokens) }}</td>
               <td>{{ formatTokens(log.cache_read_tokens) }}</td>
               <td class="cost-cell">${{ log.actual_cost?.toFixed(6) ?? '0.00' }}</td>
+              <td class="cost-cell">{{ log.rate_multiplier?.toFixed(2) ?? '1.00' }}x</td>
               <td class="cost-cell">${{ log.total_cost?.toFixed(6) ?? '0.00' }}</td>
               <td class="text-muted">{{ log.duration_ms ? log.duration_ms + 'ms' : '-' }}</td>
               <td class="text-muted">{{ formatTime(log.created_at) }}</td>
@@ -121,14 +126,13 @@
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usageAPI } from '@/api/usage'
-import type { UsageLog, Group } from '@/types'
+import type { UsageLog } from '@/types'
 
 const { t } = useI18n()
 
 const PAGE_SIZE = 20
 
 const logs = ref<UsageLog[]>([])
-const groups = ref<Group[]>([])
 const page = ref(1)
 const pageSize = PAGE_SIZE
 const total = ref(0)
@@ -192,16 +196,6 @@ async function fetchLogs(): Promise<void> {
   }
 }
 
-async function fetchGroups(): Promise<void> {
-  try {
-    const { apiClient } = await import('@/api/client')
-    const { data } = await apiClient.get<{ data: Group[] }>('/groups')
-    groups.value = (data as unknown as Group[]) ?? []
-  } catch {
-    // Groups may not be available
-  }
-}
-
 function applyFilter(): void {
   page.value = 1
   fetchLogs()
@@ -225,7 +219,6 @@ function goPage(p: number): void {
 
 onMounted(() => {
   fetchLogs()
-  fetchGroups()
 })
 </script>
 

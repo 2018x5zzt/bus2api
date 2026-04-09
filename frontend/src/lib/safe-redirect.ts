@@ -14,6 +14,7 @@ const ALLOWED_PREFIXES = [
   '/keys',
   '/usage',
   '/status',
+  '/admin',
 ] as const
 
 /**

@@ -4,6 +4,7 @@
 
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
 import { safeRedirect } from '@/lib/safe-redirect'
 
 declare module 'vue-router' {
@@ -60,6 +61,31 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  // ==================== Admin Routes ====================
+  {
+    path: '/admin',
+    component: () => import('@/layouts/ConsoleLayout.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+    children: [
+      {
+        path: '',
+        redirect: '/admin/keys',
+      },
+      {
+        path: 'keys',
+        name: 'AdminKeys',
+        component: () => import('@/views/keys/KeysView.vue'),
+        meta: { title: 'API Keys (Admin)' },
+      },
+      {
+        path: 'usage',
+        name: 'AdminUsage',
+        component: () => import('@/views/usage/UsageView.vue'),
+        meta: { title: '用量查询 (Admin)' },
+      },
+    ],
+  },
+
   // ==================== 404 ====================
   {
     path: '/:pathMatch(.*)*',
@@ -89,8 +115,10 @@ router.beforeEach((to, _from, next) => {
   }
 
   // Set page title from branding store when available
+  const appStore = useAppStore()
+  const brandName = appStore.siteName
   const title = to.meta.title as string | undefined
-  document.title = title ? `${title} - Bus2API` : 'Bus2API'
+  document.title = title ? `${title} - ${brandName}` : brandName
 
   const requiresAuth = to.meta.requiresAuth !== false
 
