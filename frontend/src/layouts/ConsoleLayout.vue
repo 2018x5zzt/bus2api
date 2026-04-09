@@ -1,13 +1,34 @@
-<!-- ConsoleLayout: Dark sidebar + white content area -->
+<!-- ConsoleLayout: Dark sidebar + white content area + mobile drawer -->
 <template>
   <div class="console-layout">
+    <!-- Mobile overlay -->
+    <div
+      v-if="mobileDrawerOpen"
+      class="mobile-overlay"
+      @click="mobileDrawerOpen = false"
+    />
+
+    <!-- Mobile topbar -->
+    <header class="mobile-topbar">
+      <button class="btn-ghost mobile-menu-btn" @click="mobileDrawerOpen = true">
+        <MenuIcon :size="20" />
+      </button>
+      <span class="mobile-logo">{{ appStore.siteName }}</span>
+    </header>
+
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
+    <aside
+      class="sidebar"
+      :class="{
+        collapsed: appStore.sidebarCollapsed,
+        'mobile-open': mobileDrawerOpen,
+      }"
+    >
       <div class="sidebar-header">
         <div class="logo" v-show="!appStore.sidebarCollapsed">
-          <span class="logo-text">Bus2API</span>
+          <span class="logo-text">{{ appStore.siteName }}</span>
         </div>
-        <button class="btn-ghost sidebar-toggle" @click="appStore.toggleSidebar">
+        <button class="btn-ghost sidebar-toggle" @click="handleToggle">
           <MenuIcon :size="18" />
         </button>
       </div>
@@ -20,14 +41,17 @@
           :to="item.path"
           class="nav-item"
           :class="{ active: isActive(item.path) }"
+          @click="closeMobileDrawer"
         >
           <component :is="item.icon" :size="20" />
-          <span v-show="!appStore.sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+          <span v-show="!appStore.sidebarCollapsed || mobileDrawerOpen" class="nav-label">{{
+            item.label
+          }}</span>
         </RouterLink>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-info" v-show="!appStore.sidebarCollapsed">
+        <div class="user-info" v-show="!appStore.sidebarCollapsed || mobileDrawerOpen">
           <div class="user-avatar">{{ avatarLetter }}</div>
           <div class="user-details">
             <div class="user-name">{{ authStore.username }}</div>
@@ -36,7 +60,9 @@
         </div>
         <button class="nav-item logout-btn" @click="handleLogout">
           <LogOutIcon :size="20" />
-          <span v-show="!appStore.sidebarCollapsed" class="nav-label">{{ t('nav.logout') }}</span>
+          <span v-show="!appStore.sidebarCollapsed || mobileDrawerOpen" class="nav-label">{{
+            t('nav.logout')
+          }}</span>
         </button>
       </div>
     </aside>
@@ -49,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -69,6 +95,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+const mobileDrawerOpen = ref(false)
+
 const userNavItems = computed(() => [
   { path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon },
   { path: '/keys', label: t('nav.keys'), icon: KeyIcon },
@@ -86,6 +114,14 @@ function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
+function handleToggle(): void {
+  appStore.toggleSidebar()
+}
+
+function closeMobileDrawer(): void {
+  mobileDrawerOpen.value = false
+}
+
 async function handleLogout(): Promise<void> {
   await authStore.logout()
   router.push('/login')
@@ -96,6 +132,42 @@ async function handleLogout(): Promise<void> {
 .console-layout {
   display: flex;
   min-height: 100vh;
+}
+
+/* ==================== Mobile Topbar ==================== */
+.mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--color-sidebar-bg);
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  z-index: 50;
+}
+
+.mobile-menu-btn {
+  color: white;
+  padding: 6px;
+}
+
+.mobile-logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+}
+
+/* ==================== Mobile Overlay ==================== */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 45;
 }
 
 /* ==================== Sidebar ==================== */
@@ -109,7 +181,7 @@ async function handleLogout(): Promise<void> {
   left: 0;
   bottom: 0;
   z-index: 40;
-  transition: width 0.2s ease;
+  transition: width 0.2s ease, transform 0.2s ease;
   overflow: hidden;
 }
 
@@ -256,18 +328,36 @@ async function handleLogout(): Promise<void> {
   margin-left: var(--sidebar-collapsed-width);
 }
 
-/* ==================== Responsive ==================== */
+/* ==================== Responsive: Mobile ==================== */
 @media (max-width: 768px) {
+  .mobile-topbar {
+    display: flex;
+  }
+
+  .mobile-overlay {
+    display: block;
+  }
+
   .sidebar {
-    width: var(--sidebar-collapsed-width);
+    width: 260px;
+    transform: translateX(-100%);
+    z-index: 50;
   }
-  .main-content {
-    margin-left: var(--sidebar-collapsed-width);
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
   }
-  .nav-label,
-  .user-info,
-  .logo {
-    display: none;
+
+  /* On mobile, always show labels when drawer is open */
+  .sidebar.collapsed {
+    width: 260px;
+  }
+
+  .main-content,
+  .main-content.expanded {
+    margin-left: 0;
+    padding: 16px;
+    padding-top: 72px; /* space for mobile topbar */
   }
 }
 </style>

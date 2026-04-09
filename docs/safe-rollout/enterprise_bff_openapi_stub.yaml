@@ -1,0 +1,747 @@
+openapi: 3.0.3
+info:
+  title: bus2api Enterprise BFF API
+  version: v1
+  description: |
+    Browser-facing contract for the enterprise console.
+    This is the only API surface the frontend should call after cutover.
+servers:
+  - url: https://enterprise-bff.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Session
+  - name: Branding
+  - name: AdminKeys
+  - name: AdminUsage
+  - name: Orgs
+paths:
+  /v1/session/me:
+    get:
+      tags: [Session]
+      summary: Get current session and resolved tenant context
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+      responses:
+        '200':
+          description: Session context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionMeEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/branding:
+    get:
+      tags: [Branding]
+      summary: Get current branding and menu configuration
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+      responses:
+        '200':
+          description: Branding settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandingEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/admin/keys:
+    get:
+      tags: [AdminKeys]
+      summary: List keys in normalized paginated format
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: page_size
+          schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+        - in: query
+          name: owner_user_id
+          schema: { type: string }
+        - in: query
+          name: group_id
+          schema: { type: string }
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive]
+      responses:
+        '200':
+          description: Paginated keys
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyPageEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+    post:
+      tags: [AdminKeys]
+      summary: Create a key through the BFF
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyCreateRequest'
+      responses:
+        '200':
+          description: Key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/admin/keys/{keyId}:
+    patch:
+      tags: [AdminKeys]
+      summary: Update a key through the BFF
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - in: path
+          name: keyId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyPatchRequest'
+      responses:
+        '200':
+          description: Key updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+    delete:
+      tags: [AdminKeys]
+      summary: Delete a key through the BFF
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - in: path
+          name: keyId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Deletion acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/admin/usage:
+    get:
+      tags: [AdminUsage]
+      summary: Query normalized usage logs and billing-related derived fields
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: page_size
+          schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+        - in: query
+          name: user_id
+          schema: { type: string }
+        - in: query
+          name: api_key_id
+          schema: { type: string }
+        - in: query
+          name: group_id
+          schema: { type: string }
+        - in: query
+          name: model
+          schema: { type: string }
+        - in: query
+          name: start_date
+          schema: { type: string, format: date-time }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Paginated usage data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageLogPageEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/orgs/{orgId}/members:
+    get:
+      tags: [Orgs]
+      summary: Get members of an organization
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Organization members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMemberListEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+    post:
+      tags: [Orgs]
+      summary: Add a member to an organization
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOrgMemberRequest'
+      responses:
+        '200':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgMemberEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+  /v1/orgs/{orgId}/budgets:
+    get:
+      tags: [Orgs]
+      summary: Get organization budgets and current spend snapshot
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - in: path
+          name: orgId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Budget list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetListEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorEnvelope'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    XContractVersion:
+      in: header
+      name: X-Contract-Version
+      required: true
+      schema:
+        type: string
+        example: v1
+    XRequestID:
+      in: header
+      name: X-Request-ID
+      required: true
+      schema:
+        type: string
+        format: uuid
+    XIdempotencyKey:
+      in: header
+      name: X-Idempotency-Key
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    ErrorEnvelope:
+      description: Normalized error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    Meta:
+      type: object
+      required: [request_id, contract_version]
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        contract_version:
+          type: string
+          example: v1
+
+    SuccessEnvelopeBase:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: ok
+        data: {}
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ErrorEnvelope:
+      type: object
+      required: [code, message, error, meta]
+      properties:
+        code:
+          type: integer
+          example: 1234
+        message:
+          type: string
+        error:
+          type: object
+          required: [type, retryable]
+          properties:
+            type:
+              type: string
+              enum: [validation_error, auth_error, permission_error, upstream_error]
+            retryable:
+              type: boolean
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    SessionMe:
+      type: object
+      required: [user_id, username, is_admin, tenant_id, roles]
+      properties:
+        user_id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        tenant_id:
+          type: string
+        org_id:
+          type: string
+          nullable: true
+        roles:
+          type: array
+          items:
+            type: string
+
+    Branding:
+      type: object
+      required: [site_name]
+      properties:
+        site_name:
+          type: string
+        site_logo:
+          type: string
+          nullable: true
+        site_subtitle:
+          type: string
+          nullable: true
+        custom_menu_items:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              href: { type: string }
+
+    ApiKey:
+      type: object
+      required:
+        - id
+        - name
+        - key
+        - status
+        - owner_user_id
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+        owner_user_id:
+          type: string
+        group_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        quota:
+          type: number
+          format: double
+          nullable: true
+        used_quota:
+          type: number
+          format: double
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        custom_key:
+          type: string
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ApiKeyCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        owner_user_id:
+          type: string
+          nullable: true
+        group_id:
+          type: string
+          nullable: true
+        quota:
+          type: number
+          format: double
+          nullable: true
+        expires_in_days:
+          type: integer
+          nullable: true
+        custom_key:
+          type: string
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
+
+    ApiKeyPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        group_id:
+          type: string
+          nullable: true
+        quota:
+          type: number
+          format: double
+          nullable: true
+        expires_in_days:
+          type: integer
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
+
+    UsageLog:
+      type: object
+      required:
+        - id
+        - created_at
+        - model
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+          nullable: true
+        api_key_id:
+          type: string
+          nullable: true
+        account_id:
+          type: string
+          nullable: true
+        group_id:
+          type: string
+          nullable: true
+        model:
+          type: string
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        duration_ms:
+          type: integer
+          nullable: true
+        actual_cost:
+          type: number
+          format: double
+          nullable: true
+        billable_cost:
+          type: number
+          format: double
+          nullable: true
+        rate_multiplier:
+          type: number
+          format: double
+          nullable: true
+        pricing_rule_version:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    OrgMember:
+      type: object
+      required: [member_id, user_id, role, created_at]
+      properties:
+        member_id:
+          type: string
+        user_id:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, finance, developer, viewer]
+        status:
+          type: string
+          enum: [active, invited, disabled]
+        created_at:
+          type: string
+          format: date-time
+
+    AddOrgMemberRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [owner, admin, finance, developer, viewer]
+
+    Budget:
+      type: object
+      required: [budget_id, scope_type, period, limit_amount, spent_amount]
+      properties:
+        budget_id:
+          type: string
+        scope_type:
+          type: string
+          enum: [org, department, project, user]
+        scope_id:
+          type: string
+        period:
+          type: string
+          enum: [daily, weekly, monthly]
+        limit_amount:
+          type: number
+          format: double
+        spent_amount:
+          type: number
+          format: double
+        currency:
+          type: string
+          example: USD
+        soft_limit_only:
+          type: boolean
+          default: true
+
+    PaginatedApiKeys:
+      type: object
+      required: [data, total, page, page_size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKey'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    PaginatedUsageLogs:
+      type: object
+      required: [data, total, page, page_size]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UsageLog'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    BooleanPayload:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+
+    SessionMeEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SessionMe'
+
+    BrandingEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Branding'
+
+    ApiKeyEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ApiKey'
+
+    ApiKeyPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedApiKeys'
+
+    UsageLogPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaginatedUsageLogs'
+
+    OrgMemberEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/OrgMember'
+
+    OrgMemberListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrgMember'
+
+    BudgetListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Budget'
+
+    BooleanEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/BooleanPayload'

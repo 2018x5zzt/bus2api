@@ -1,10 +1,19 @@
 /**
  * Axios HTTP client with API envelope unwrapping and token refresh support.
+ *
+ * Security hardening:
+ *   - Base URL must be set via VITE_API_BASE_URL; no unsafe fallback.
+ *   - Contract headers (X-Contract-Version, X-Request-ID, X-Idempotency-Key)
+ *     are injected automatically per the BFF OpenAPI spec.
  */
 
 import axios from 'axios'
+import { buildContractHeaders } from '@/lib/contract-headers'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://xlabapi.top/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+if (!API_BASE_URL) {
+  throw new Error('[bus2api] VITE_API_BASE_URL is not set. Refusing to start with an unsafe fallback.')
+}
 
 interface ApiResponse<T> {
   code: number
@@ -38,13 +47,21 @@ export const apiClient = axios.create({
 })
 
 /**
- * Request interceptor: attach JWT token
+ * Request interceptor: attach JWT token + BFF contract headers
  */
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // Inject contract headers (X-Contract-Version, X-Request-ID, X-Idempotency-Key)
+  const method = config.method ?? 'get'
+  const contractHeaders = buildContractHeaders(method)
+  Object.entries(contractHeaders).forEach(([key, value]) => {
+    config.headers.set(key, value)
+  })
+
   return config
 })
 

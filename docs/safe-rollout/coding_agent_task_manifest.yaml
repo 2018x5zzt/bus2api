@@ -1,0 +1,243 @@
+version: 1
+project: bus2api-enterprise-safe-rollout
+owners:
+  contract: Contract Owner Agent
+  frontend: Frontend Agent
+  backend_bff: Backend BFF Agent
+  data: Data / Reconciliation Agent
+  qa: QA / Release Agent
+phases:
+  - id: P0
+    goal: Contract freeze, client hardening, read-only BFF, validation scaffolding
+  - id: P1
+    goal: Safe write proxy, admin console wiring, enterprise reporting
+  - id: P2
+    goal: Org governance, billing visibility, soft enforcement
+  - id: P3
+    goal: Optional hard enforcement after proof
+
+tasks:
+  - id: INT-P0-001
+    phase: P0
+    owner: contract
+    title: Freeze enterprise BFF contract
+    depends_on: []
+    outputs:
+      - contracts/enterprise-bff-openapi.yaml
+      - contracts/contract-version-policy.md
+      - contracts/error-envelope.examples.json
+    acceptance:
+      - npx @redocly/cli lint contracts/enterprise-bff-openapi.yaml
+    rollback: No runtime rollback required
+
+  - id: QA-P0-000
+    phase: P0
+    owner: qa
+    title: Add test and validation scaffolding
+    depends_on: [INT-P0-001]
+    outputs:
+      - frontend test scripts
+      - BFF test scripts
+      - CI or local validation pipeline
+    acceptance:
+      - cd frontend && npm run typecheck
+      - cd frontend && npm run build
+      - cd frontend && npm run test:unit
+      - cd frontend && npm run contract:test
+    rollback: Remove tooling only
+
+  - id: FE-P0-001
+    phase: P0
+    owner: frontend
+    title: Harden API client
+    depends_on: [INT-P0-001]
+    files:
+      - frontend/src/api/client.ts
+      - frontend/src/lib/request-meta.ts
+      - frontend/src/lib/error-envelope.ts
+    acceptance:
+      - cd frontend && npm run typecheck
+      - cd frontend && npm run build
+    rollback: Restore previous client and disable enterprise flags
+
+  - id: FE-P0-002
+    phase: P0
+    owner: frontend
+    title: Safe redirect and role-aware routing skeleton
+    depends_on: [FE-P0-001]
+    files:
+      - frontend/src/router/index.ts
+      - frontend/src/views/auth/LoginView.vue
+      - frontend/src/lib/safe-redirect.ts
+    acceptance:
+      - cd frontend && npm run test:unit -- redirect route-guards
+    rollback: Remove admin route tree, keep sanitizer
+
+  - id: FE-P0-003
+    phase: P0
+    owner: frontend
+    title: Layout, branding, and mobile navigation refactor
+    depends_on: [FE-P0-002]
+    files:
+      - frontend/src/layouts/ConsoleLayout.vue
+      - frontend/src/stores/branding.ts
+      - frontend/src/components/navigation/MobileDrawer.vue
+    acceptance:
+      - cd frontend && npm run build
+    rollback: Disable branding feature flag
+
+  - id: FE-P0-004
+    phase: P0
+    owner: frontend
+    title: Scaffold enterprise keys and usage pages against mocked BFF responses
+    depends_on: [FE-P0-003, INT-P0-001]
+    files:
+      - frontend/src/views/keys/KeysView.vue
+      - frontend/src/views/usage/UsageView.vue
+      - frontend/src/mocks/**
+    acceptance:
+      - cd frontend && npm run build
+      - cd frontend && npm run test:unit -- keys usage
+    rollback: Turn off enterprise flags
+
+  - id: BE-P0-001
+    phase: P0
+    owner: backend_bff
+    title: Bootstrap enterprise-bff in read-only mode
+    depends_on: [INT-P0-001]
+    outputs:
+      - enterprise-bff/
+      - GET /v1/session/me
+      - GET /v1/branding
+      - GET /v1/admin/keys
+      - GET /v1/admin/usage
+    acceptance:
+      - cd enterprise-bff && npm test
+      - cd enterprise-bff && npm run contract:test
+    rollback: Disable BFF routing
+
+  - id: BE-P0-002
+    phase: P0
+    owner: backend_bff
+    title: Create enterprise metadata DB bootstrap schema
+    depends_on: [BE-P0-001]
+    outputs:
+      - tenants table
+      - organizations table
+      - organization_members table
+      - feature_flags table
+      - audit_logs table
+      - idempotency_keys table
+      - branding_overrides table
+    acceptance:
+      - cd enterprise-bff && npm run db:migrate
+      - cd enterprise-bff && npm run db:test
+    rollback: Disable metadata schema only
+
+  - id: BE-P0-003
+    phase: P0
+    owner: data
+    title: Shadow usage mirror and reconciliation skeleton
+    depends_on: [BE-P0-001, BE-P0-002]
+    outputs:
+      - usage mirror job
+      - reconciliation job
+      - mismatch metrics
+    acceptance:
+      - cd enterprise-bff && npm run reconcile:test
+      - cd enterprise-bff && npm run reconcile:dry-run
+    rollback: Stop mirror job
+
+  - id: QA-P0-001
+    phase: P0
+    owner: qa
+    title: Read-only canary and rollback drill
+    depends_on: [FE-P0-004, BE-P0-003]
+    acceptance:
+      - cd frontend && npm run test:e2e
+      - cd enterprise-bff && npm run test:isolation
+      - cd enterprise-bff && npm run rollback:drill
+    rollback: N/A
+
+  - id: FE-P1-001
+    phase: P1
+    owner: frontend
+    title: Wire existing admin views to BFF
+    depends_on: [QA-P0-001]
+    acceptance:
+      - cd frontend && npm run test:e2e -- admin-access
+
+  - id: BE-P1-001
+    phase: P1
+    owner: backend_bff
+    title: Safe write proxy for key lifecycle
+    depends_on: [QA-P0-001]
+    acceptance:
+      - cd enterprise-bff && npm run test:idempotency
+      - cd enterprise-bff && npm run test:audit
+    rollback: Disable write routes only
+
+  - id: FE-P1-002
+    phase: P1
+    owner: frontend
+    title: Advanced keys console on real BFF endpoints
+    depends_on: [BE-P1-001]
+    acceptance:
+      - cd frontend && npm run test:e2e -- key-lifecycle
+
+  - id: BE-P1-002
+    phase: P1
+    owner: backend_bff
+    title: Organization, membership, and budget read models
+    depends_on: [BE-P1-001]
+    acceptance:
+      - cd enterprise-bff && npm run test:orgs
+      - cd enterprise-bff && npm run test:isolation
+
+  - id: FE-P1-003
+    phase: P1
+    owner: frontend
+    title: Usage reports, filters, and export via BFF
+    depends_on: [BE-P1-002]
+    acceptance:
+      - cd frontend && npm run test:e2e -- usage-report export-report
+
+  - id: BE-P1-003
+    phase: P1
+    owner: data
+    title: Billing ledger v1 (read-only, derived)
+    depends_on: [BE-P1-002]
+    acceptance:
+      - cd enterprise-bff && npm run test:ledger
+      - cd enterprise-bff && npm run reconcile:test
+
+  - id: FE-P2-001
+    phase: P2
+    owner: frontend
+    title: Organization management UI
+    depends_on: [BE-P1-002]
+
+  - id: FE-P2-002
+    phase: P2
+    owner: frontend
+    title: Audit, billing, and reporting UI
+    depends_on: [BE-P1-003]
+
+  - id: BE-P2-001
+    phase: P2
+    owner: backend_bff
+    title: Soft budget enforcement
+    depends_on: [BE-P1-003]
+    acceptance:
+      - cd enterprise-bff && npm run test:budget-dry-run
+
+  - id: QA-P2-001
+    phase: P2
+    owner: qa
+    title: Enterprise canary, reconciliation, and rollback approval
+    depends_on: [FE-P2-002, BE-P2-001]
+
+start_here:
+  - INT-P0-001
+  - FE-P0-001
+  - BE-P0-001

@@ -71,11 +71,14 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
+import { safeRedirect } from '@/lib/safe-redirect'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const appStore = useAppStore()
 
 const email = ref('')
 const password = ref('')
@@ -98,7 +101,7 @@ async function handleLogin(): Promise<void> {
       return
     }
 
-    const redirect = (route.query.redirect as string) || '/dashboard'
+    const redirect = safeRedirect(route.query.redirect)
     router.push(redirect)
   } catch {
     errorMsg.value = t('login.error')
@@ -113,7 +116,7 @@ async function handle2FA(): Promise<void> {
 
   try {
     await authStore.complete2FA(tempToken.value, totpCode.value)
-    const redirect = (route.query.redirect as string) || '/dashboard'
+    const redirect = safeRedirect(route.query.redirect)
     router.push(redirect)
   } catch {
     errorMsg.value = t('login.error')

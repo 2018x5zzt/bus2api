@@ -4,10 +4,12 @@
 
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { safeRedirect } from '@/lib/safe-redirect'
 
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
+    requiresAdmin?: boolean
     title?: string
   }
 }
@@ -75,7 +77,7 @@ const router = createRouter({
   },
 })
 
-/** Navigation guard: auth + admin role check */
+/** Navigation guard: auth + role check + safe redirect */
 let authInitialized = false
 
 router.beforeEach((to, _from, next) => {
@@ -86,7 +88,7 @@ router.beforeEach((to, _from, next) => {
     authInitialized = true
   }
 
-  // Set page title
+  // Set page title from branding store when available
   const title = to.meta.title as string | undefined
   document.title = title ? `${title} - Bus2API` : 'Bus2API'
 
@@ -102,7 +104,15 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (!authStore.isAuthenticated) {
-    next({ path: '/login', query: { redirect: to.fullPath } })
+    // Use safeRedirect to validate the target path before storing it
+    const redirectTarget = safeRedirect(to.fullPath)
+    next({ path: '/login', query: { redirect: redirectTarget } })
+    return
+  }
+
+  // Role-based guard: block non-admin users from admin-only routes
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    next('/dashboard')
     return
   }
 
