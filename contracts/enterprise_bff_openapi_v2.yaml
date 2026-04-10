@@ -6,8 +6,12 @@ paths:
   /groups/available:
     get:
       summary: List enterprise-visible groups for the current user
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
       responses:
         '200':
+          description: Visible groups accessible to the current user
           content:
             application/json:
               schema:
@@ -15,8 +19,12 @@ paths:
   /groups/pool-status:
     get:
       summary: List redacted enterprise pool health
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
       responses:
         '200':
+          description: Enterprise pool health data for visible groups
           content:
             application/json:
               schema:
@@ -24,8 +32,19 @@ paths:
   /keys:
     post:
       summary: Create an enterprise key with server-side `group_id` authorization
+      parameters:
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyCreateRequest'
       responses:
         '200':
+          description: Newly created enterprise API key
           content:
             application/json:
               schema:
@@ -38,8 +57,18 @@ paths:
           name: id
           required: true
           schema: { type: string }
+        - $ref: '#/components/parameters/XContractVersion'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyPatchRequest'
       responses:
         '200':
+          description: Updated enterprise API key
           content:
             application/json:
               schema:
@@ -185,6 +214,76 @@ components:
         created_at:
           type: string
           format: date-time
+    ApiKeyCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        owner_user_id:
+          type: string
+          nullable: true
+        group_id:
+          type: string
+          nullable: true
+        quota:
+          type: number
+          format: double
+          nullable: true
+        expires_in_days:
+          type: integer
+          nullable: true
+        custom_key:
+          type: string
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
+    ApiKeyPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        group_id:
+          type: string
+          nullable: true
+        quota:
+          type: number
+          format: double
+          nullable: true
+        expires_in_days:
+          type: integer
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
     ApiKeyEnvelope:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelopeBase'
@@ -192,3 +291,25 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/ApiKey'
+  parameters:
+    XContractVersion:
+      in: header
+      name: X-Contract-Version
+      required: true
+      schema:
+        type: string
+        example: v2
+    XRequestID:
+      in: header
+      name: X-Request-ID
+      required: true
+      schema:
+        type: string
+        format: uuid
+    XIdempotencyKey:
+      in: header
+      name: X-Idempotency-Key
+      required: true
+      schema:
+        type: string
+        format: uuid
