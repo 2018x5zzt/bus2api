@@ -4,7 +4,8 @@ Frozen OpenAPI specs for the enterprise BFF layer.
 
 | File | Version | Status |
 |------|---------|--------|
-| `enterprise_bff_openapi_v1.yaml` | v1 | Active |
+| `enterprise_bff_openapi_v1.yaml` | v1 | Frozen |
+| `enterprise_bff_openapi_v2.yaml` | v2 | Active |
 
 ## Rules
 

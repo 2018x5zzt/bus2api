@@ -9,8 +9,8 @@
  *   - X-Idempotency-Key: unique UUID for idempotent retries
  */
 
-/** Current active contract version — must match contracts/enterprise_bff_openapi_v1.yaml */
-export const CONTRACT_VERSION = 'v1'
+/** Current active contract version — must match contracts/enterprise_bff_openapi_v2.yaml */
+export const CONTRACT_VERSION = 'v2'
 
 /** Generate a UUID v4 (uses crypto.randomUUID when available) */
 export function generateUUID(): string {

@@ -1,0 +1,194 @@
+openapi: 3.0.3
+info:
+  title: bus2api Enterprise BFF API
+  version: v2
+paths:
+  /groups/available:
+    get:
+      summary: List enterprise-visible groups for the current user
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisibleGroupListEnvelope'
+  /groups/pool-status:
+    get:
+      summary: List redacted enterprise pool health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterprisePoolStatusEnvelope'
+  /keys:
+    post:
+      summary: Create an enterprise key with server-side `group_id` authorization
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyEnvelope'
+  /keys/{id}:
+    put:
+      summary: Update an enterprise key with server-side `group_id` authorization
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyEnvelope'
+components:
+  schemas:
+    Meta:
+      type: object
+      required: [request_id, contract_version]
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        contract_version:
+          type: string
+          example: v2
+    SuccessEnvelopeBase:
+      type: object
+      required: [code, message, data, meta]
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: ok
+        data: {}
+        meta:
+          $ref: '#/components/schemas/Meta'
+    VisibleGroup:
+      type: object
+      required: [id, name, platform]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        platform: { type: string }
+    VisibleGroupListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/VisibleGroup'
+    PoolTrendPoint:
+      type: object
+      required: [timestamp, health_percent]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        health_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        health_state:
+          type: string
+          enum: [healthy, degraded, down]
+    EnterprisePoolStatusGroup:
+      type: object
+      required: [group_id, group_name, health_percent, health_state, updated_at]
+      properties:
+        group_id: { type: integer }
+        group_name: { type: string }
+        health_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        health_state:
+          type: string
+          enum: [healthy, degraded, down]
+        trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoolTrendPoint'
+        updated_at:
+          type: string
+          format: date-time
+    EnterprisePoolStatusEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterprisePoolStatusGroup'
+    ApiKey:
+      type: object
+      required:
+        - id
+        - name
+        - key
+        - status
+        - owner_user_id
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+        owner_user_id:
+          type: string
+        group_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        quota:
+          type: number
+          format: double
+          nullable: true
+        used_quota:
+          type: number
+          format: double
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        custom_key:
+          type: string
+          nullable: true
+        ip_whitelist:
+          type: array
+          items: { type: string }
+        ip_blacklist:
+          type: array
+          items: { type: string }
+        rate_limit_5h:
+          type: integer
+          nullable: true
+        rate_limit_1d:
+          type: integer
+          nullable: true
+        rate_limit_7d:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    ApiKeyEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelopeBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ApiKey'
