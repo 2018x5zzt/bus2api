@@ -5,14 +5,22 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 import type { PublicSettings } from '@/types'
 
 export const useAppStore = defineStore('app', () => {
+  const authStore = useAuthStore()
   const publicSettings = ref<PublicSettings | null>(null)
   const sidebarCollapsed = ref(false)
   const loading = ref(false)
 
-  const siteName = computed(() => publicSettings.value?.site_name || 'Bus2API')
+  const siteName = computed(
+    () =>
+      authStore.enterpriseDisplayName ||
+      publicSettings.value?.enterprise_display_name ||
+      publicSettings.value?.site_name ||
+      'Bus2API',
+  )
 
   /** Fetch public settings from backend */
   async function fetchPublicSettings(): Promise<void> {

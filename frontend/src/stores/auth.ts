@@ -14,6 +14,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'admin')
   const username = computed(() => user.value?.username ?? '')
   const balance = computed(() => user.value?.balance ?? 0)
+  const enterpriseDisplayName = computed(
+    () => user.value?.enterprise_display_name || user.value?.enterprise_name || '',
+  )
 
   /** Restore auth state from localStorage */
   function checkAuth(): void {
@@ -46,8 +49,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /** Complete 2FA login */
-  async function complete2FA(tempToken: string, code: string): Promise<void> {
-    const response = await authAPI.login2FA({ temp_token: tempToken, totp_code: code })
+  async function complete2FA(companyName: string, tempToken: string, code: string): Promise<void> {
+    const response = await authAPI.login2FA({
+      company_name: companyName,
+      temp_token: tempToken,
+      totp_code: code,
+    })
     user.value = response.user
     isAuthenticated.value = true
   }
@@ -85,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     username,
     balance,
+    enterpriseDisplayName,
     checkAuth,
     login,
     complete2FA,

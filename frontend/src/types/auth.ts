@@ -5,6 +5,7 @@
 // ==================== Auth Types ====================
 
 export interface LoginRequest {
+  company_name: string
   email: string
   password: string
   turnstile_token?: string
@@ -24,6 +25,7 @@ export interface TotpLoginResponse {
 }
 
 export interface TotpLogin2FARequest {
+  company_name: string
   temp_token: string
   totp_code: string
 }
@@ -41,6 +43,9 @@ export interface User {
   concurrency: number
   status: 'active' | 'disabled'
   allowed_groups: number[] | null
+  enterprise_name?: string
+  enterprise_display_name?: string
+  enterprise_support_contact?: string
   created_at: string
   updated_at: string
 }
@@ -73,6 +78,9 @@ export interface ChangePasswordRequest {
 
 export interface PublicSettings {
   site_name?: string
+  enterprise_name?: string
+  enterprise_display_name?: string
+  enterprise_support_contact?: string
   registration_enabled?: boolean
   turnstile_enabled?: boolean
   turnstile_site_key?: string

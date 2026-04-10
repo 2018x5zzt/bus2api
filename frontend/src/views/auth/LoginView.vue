@@ -3,7 +3,7 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <h1 class="login-logo">{{ appStore.siteName }}</h1>
+        <h1 class="login-logo">{{ loginBrandName }}</h1>
         <p class="login-subtitle">{{ t('login.title') }}</p>
       </div>
 
@@ -14,6 +14,17 @@
 
       <!-- 2FA step -->
       <form v-if="needs2FA" @submit.prevent="handle2FA" class="login-form">
+        <div class="form-group">
+          <label class="label">{{ t('login.companyName') }}</label>
+          <input
+            v-model="companyName"
+            type="text"
+            class="input"
+            autocomplete="organization"
+            readonly
+            required
+          />
+        </div>
         <p class="two-factor-hint">{{ t('login.twoFactor') }}</p>
         <div class="form-group">
           <label class="label">{{ t('login.twoFactorCode') }}</label>
@@ -37,13 +48,23 @@
       <!-- Login step -->
       <form v-else @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
+          <label class="label">{{ t('login.companyName') }}</label>
+          <input
+            v-model="companyName"
+            type="text"
+            class="input"
+            autocomplete="organization"
+            autofocus
+            required
+          />
+        </div>
+        <div class="form-group">
           <label class="label">{{ t('login.email') }}</label>
           <input
             v-model="email"
             type="email"
             class="input"
             autocomplete="username"
-            autofocus
             required
           />
         </div>
@@ -67,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -80,6 +101,9 @@ const route = useRoute()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+const LAST_COMPANY_NAME_KEY = 'bus2api.last_company_name'
+
+const companyName = ref(localStorage.getItem(LAST_COMPANY_NAME_KEY) || '')
 const email = ref('')
 const password = ref('')
 const totpCode = ref('')
@@ -87,13 +111,20 @@ const tempToken = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 const needs2FA = ref(false)
+const loginBrandName = computed(() => companyName.value.trim() || appStore.siteName)
 
 async function handleLogin(): Promise<void> {
   loading.value = true
   errorMsg.value = ''
 
   try {
-    const result = await authStore.login({ email: email.value, password: password.value })
+    const normalizedCompanyName = companyName.value.trim()
+    const result = await authStore.login({
+      company_name: normalizedCompanyName,
+      email: email.value,
+      password: password.value,
+    })
+    localStorage.setItem(LAST_COMPANY_NAME_KEY, normalizedCompanyName)
 
     if (result.requires2FA) {
       needs2FA.value = true
@@ -115,7 +146,7 @@ async function handle2FA(): Promise<void> {
   errorMsg.value = ''
 
   try {
-    await authStore.complete2FA(tempToken.value, totpCode.value)
+    await authStore.complete2FA(companyName.value.trim(), tempToken.value, totpCode.value)
     const redirect = safeRedirect(route.query.redirect)
     router.push(redirect)
   } catch {
