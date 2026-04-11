@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -122,10 +122,31 @@ function closeMobileDrawer(): void {
   mobileDrawerOpen.value = false
 }
 
+async function syncCurrentUser(): Promise<void> {
+  if (!authStore.isAuthenticated) {
+    return
+  }
+
+  await authStore.refreshProfile()
+}
+
+function handleWindowFocus(): void {
+  void syncCurrentUser()
+}
+
 async function handleLogout(): Promise<void> {
   await authStore.logout()
   router.push('/login')
 }
+
+onMounted(() => {
+  void syncCurrentUser()
+  window.addEventListener('focus', handleWindowFocus)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', handleWindowFocus)
+})
 </script>
 
 <style scoped>
