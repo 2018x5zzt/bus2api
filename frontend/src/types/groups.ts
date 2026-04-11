@@ -43,21 +43,32 @@ export interface AdminGroup extends Group {
   sort_order: number
 }
 
-export interface GroupPoolStatus {
-  group_id: number
-  group_name: string
+export interface VisibleGroupOption {
+  id: number
+  name: string
   platform: string
-  total_accounts: number
-  active_account_count: number
-  rate_limited_account_count: number
-  available_account_count: number
-  availability_ratio: number
-  status: 'healthy' | 'degraded' | 'down'
 }
 
-export interface GroupPoolStatusResponse {
-  checked_at: string
-  groups: GroupPoolStatus[]
+export interface PoolTrendPoint {
+  bucket_time: string
+  health_percent: number
+  health_state: 'healthy' | 'degraded' | 'down'
+}
+
+export interface EnterprisePoolStatusGroup {
+  group_id: number
+  group_name: string
+  health_percent: number
+  health_state: 'healthy' | 'degraded' | 'down'
+  trend: PoolTrendPoint[]
+  updated_at: string
+}
+
+export interface EnterprisePoolStatusResponse {
+  visible_group_count: number
+  overall_health_percent: number | null
+  updated_at: string
+  groups: EnterprisePoolStatusGroup[]
 }
 
 export interface CreateGroupRequest {

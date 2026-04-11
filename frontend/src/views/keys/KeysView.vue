@@ -21,14 +21,12 @@
         />
       </div>
       <div class="filter-item">
-        <input
-          v-model.number="filters.group_id"
-          type="number"
-          class="input input-sm"
-          :placeholder="t('keys.groupId')"
-          min="0"
-          @change="fetchKeys"
-        />
+        <select v-model="filters.group_id" class="input input-sm" @change="fetchKeys">
+          <option value="">{{ t('keys.groupAll') }}</option>
+          <option v-for="group in visibleGroups" :key="group.id" :value="String(group.id)">
+            {{ group.name }}
+          </option>
+        </select>
       </div>
       <div class="filter-item">
         <select v-model="filters.status" class="input input-sm" @change="fetchKeys">
@@ -149,13 +147,15 @@
             </div>
             <div class="form-group flex-1">
               <label class="label">{{ t('keys.createDialog.group') }}</label>
-              <input
-                v-model.number="newKey.group_id"
-                type="number"
-                class="input"
-                :placeholder="t('keys.createDialog.groupPlaceholder')"
-                min="0"
-              />
+              <select v-model="newKey.group_id" class="input">
+                <option :value="null">{{ t('keys.createDialog.noGroup') }}</option>
+                <option v-for="group in visibleGroups" :key="group.id" :value="group.id">
+                  {{ group.name }}
+                </option>
+              </select>
+              <p v-if="visibleGroups.length === 0" class="empty-hint">
+                {{ t('keys.noVisibleGroupsHint') }}
+              </p>
             </div>
           </div>
 
@@ -266,8 +266,9 @@ import {
   Trash2 as TrashIcon,
   Key as KeyIcon,
 } from 'lucide-vue-next'
+import { groupsAPI } from '@/api/groups'
 import { keysAPI } from '@/api/keys'
-import type { ApiKey } from '@/types'
+import type { ApiKey, VisibleGroupOption } from '@/types'
 
 const { t } = useI18n()
 
@@ -280,6 +281,7 @@ const total = ref(0)
 const loading = ref(false)
 const showCreate = ref(false)
 const creating = ref(false)
+const visibleGroups = ref<VisibleGroupOption[]>([])
 
 const filters = reactive({
   search: '',
@@ -366,6 +368,14 @@ async function fetchKeys(): Promise<void> {
   }
 }
 
+async function loadVisibleGroups(): Promise<void> {
+  try {
+    visibleGroups.value = await groupsAPI.getVisibleGroups()
+  } catch {
+    visibleGroups.value = []
+  }
+}
+
 function resetNewKey(): void {
   newKey.name = ''
   newKey.quota = 0
@@ -429,7 +439,7 @@ function goPage(p: number): void {
 }
 
 onMounted(() => {
-  fetchKeys()
+  void Promise.all([loadVisibleGroups(), fetchKeys()])
 })
 </script>
 

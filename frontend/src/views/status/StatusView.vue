@@ -1,4 +1,4 @@
-<!-- StatusView: User-visible group pool availability -->
+<!-- StatusView: Enterprise-safe pool health overview -->
 <template>
   <div class="animate-fade-in">
     <div class="page-header status-header">
@@ -15,7 +15,7 @@
     <section class="status-hero" :class="`hero-${overallState}`">
       <div class="status-hero-copy">
         <div class="status-hero-kicker">{{ t('status.overall') }}</div>
-        <div class="status-hero-value">{{ formatPercent(overallRatio) }}</div>
+        <div class="status-hero-value">{{ formatPercent(status.overall_health_percent) }}</div>
         <p class="status-hero-text">{{ overallMessage }}</p>
       </div>
       <div class="status-hero-icon">
@@ -28,76 +28,49 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">{{ t('status.visiblePools') }}</div>
-        <div class="stat-value">{{ groups.length }}</div>
+        <div class="stat-value">{{ status.visible_group_count }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">{{ t('status.availableAccounts') }}</div>
-        <div class="stat-value">{{ totalAvailable }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">{{ t('status.limitedAccounts') }}</div>
-        <div class="stat-value">{{ totalLimited }}</div>
+        <div class="stat-label">{{ t('status.overallHealthPercent') }}</div>
+        <div class="stat-value">{{ formatPercent(status.overall_health_percent) }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">{{ t('status.lastCheck') }}</div>
-        <div class="stat-value status-last-check">{{ lastCheck }}</div>
+        <div class="stat-value status-last-check">{{ formatDateTime(status.updated_at) }}</div>
       </div>
     </div>
 
-    <div v-if="error && groups.length === 0" class="empty-state">
+    <div v-if="error && status.groups.length === 0" class="empty-state">
       <ShieldAlert :size="40" class="empty-state-icon" />
       <div>{{ error }}</div>
       <button class="btn-secondary btn-sm" @click="loadStatus">{{ t('common.retry') }}</button>
     </div>
 
-    <div v-else-if="!loading && groups.length === 0" class="empty-state">
+    <div v-else-if="!loading && status.groups.length === 0" class="empty-state">
       <TrendingUp :size="40" class="empty-state-icon" />
       <div>{{ t('status.noGroups') }}</div>
       <div class="empty-hint">{{ t('status.noGroupsHint') }}</div>
     </div>
 
     <div v-else class="pool-grid">
-      <article v-for="group in groups" :key="group.group_id" class="card pool-card">
+      <article v-for="group in status.groups" :key="group.group_id" class="card pool-card">
         <div class="pool-card-header">
           <div class="pool-card-copy">
-            <div class="pool-name-row">
-              <h2 class="pool-name">{{ group.group_name }}</h2>
-              <span class="platform-badge">{{ formatPlatform(group.platform) }}</span>
-            </div>
+            <h2 class="pool-name">{{ group.group_name }}</h2>
             <p class="pool-status-text">{{ groupSummaryText(group) }}</p>
           </div>
-          <div class="pool-percent" :class="`percent-${groupDisplayState(group)}`">
-            {{ formatPercent(group.availability_ratio) }}
-          </div>
-        </div>
-
-        <div class="pool-metrics">
-          <div class="pool-metric">
-            <span class="pool-metric-label">{{ t('status.availableAccounts') }}</span>
-            <strong>{{ group.available_account_count }}</strong>
-          </div>
-          <div class="pool-metric">
-            <span class="pool-metric-label">{{ t('status.limitedAccounts') }}</span>
-            <strong>{{ group.rate_limited_account_count }}</strong>
-          </div>
-          <div class="pool-metric">
-            <span class="pool-metric-label">{{ t('status.totalAccounts') }}</span>
-            <strong>{{ group.total_accounts }}</strong>
+          <div class="pool-percent" :class="`percent-${group.health_state}`">
+            {{ formatPercent(group.health_percent) }}
           </div>
         </div>
 
         <div class="pool-trend">
           <div class="pool-trend-header">
             <span>{{ t('status.trend') }}</span>
-            <span class="pool-trend-hint">
-              {{
-                hasTrend(group.group_id)
-                  ? t('status.trendHint')
-                  : t('status.noTrend')
-              }}
-            </span>
+            <span class="pool-trend-hint">{{ formatDateTime(group.updated_at) }}</span>
           </div>
           <svg
+            v-if="group.trend.length > 1"
             class="pool-trend-chart"
             viewBox="0 0 240 64"
             preserveAspectRatio="none"
@@ -105,14 +78,15 @@
           >
             <line x1="0" y1="58" x2="240" y2="58" class="trend-axis" />
             <polyline
-              :points="sparklinePoints(group.group_id)"
+              :points="sparklinePoints(group.trend)"
               fill="none"
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="3"
-              :class="['trend-line', `trend-${groupDisplayState(group)}`]"
+              :class="['trend-line', `trend-${group.health_state}`]"
             />
           </svg>
+          <p v-else class="pool-trend-empty">{{ t('status.noTrend') }}</p>
         </div>
       </article>
     </div>
@@ -124,12 +98,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Activity, RefreshCw, ShieldAlert, ShieldCheck, TrendingUp } from 'lucide-vue-next'
 import { groupsAPI } from '@/api/groups'
-import type { GroupPoolStatus } from '@/types'
+import type { EnterprisePoolStatusGroup, EnterprisePoolStatusResponse, PoolTrendPoint } from '@/types'
 
 const { t } = useI18n()
 
 const POLL_INTERVAL_MS = 30_000
-const HISTORY_LIMIT = 20
 const CHART_WIDTH = 240
 const CHART_HEIGHT = 64
 const CHART_PADDING = 6
@@ -137,48 +110,33 @@ const HEALTHY_RATIO_THRESHOLD = 0.65
 
 type DisplayState = 'healthy' | 'degraded' | 'down'
 
-const groups = ref<GroupPoolStatus[]>([])
-const historyByGroup = ref<Record<number, number[]>>({})
+const status = ref<EnterprisePoolStatusResponse>({
+  visible_group_count: 0,
+  overall_health_percent: null,
+  updated_at: '',
+  groups: [],
+})
 const loading = ref(false)
 const error = ref('')
-const lastCheck = ref('-')
 
 let timer: ReturnType<typeof setInterval> | undefined
 
-const totalAvailable = computed(() =>
-  groups.value.reduce((sum, group) => sum + group.available_account_count, 0),
-)
-
-const totalLimited = computed(() =>
-  groups.value.reduce((sum, group) => sum + group.rate_limited_account_count, 0),
-)
-
-const overallRatio = computed(() => {
-  const denominator = totalAvailable.value + totalLimited.value
-  if (denominator <= 0) {
-    return totalAvailable.value > 0 ? 1 : 0
-  }
-  return totalAvailable.value / denominator
-})
-
-function resolveDisplayState(available: number, ratio: number): DisplayState {
-  if (available <= 0) {
+function resolveDisplayState(percent: number | null): DisplayState {
+  if (percent === null || percent <= 0) {
     return 'down'
   }
-
-  if (ratio >= HEALTHY_RATIO_THRESHOLD) {
+  if (percent / 100 >= HEALTHY_RATIO_THRESHOLD) {
     return 'healthy'
   }
-
   return 'degraded'
 }
 
 const overallState = computed<DisplayState>(() =>
-  groups.value.length === 0 ? 'down' : resolveDisplayState(totalAvailable.value, overallRatio.value),
+  status.value.groups.length === 0 ? 'down' : resolveDisplayState(status.value.overall_health_percent),
 )
 
 const overallMessage = computed(() => {
-  const percent = formatPercent(overallRatio.value)
+  const percent = formatPercent(status.value.overall_health_percent)
   const messages: Record<DisplayState, string> = {
     healthy: t('status.overallHealthy', { percent }),
     degraded: t('status.overallDegraded', { percent }),
@@ -187,54 +145,45 @@ const overallMessage = computed(() => {
   return messages[overallState.value]
 })
 
-function formatPercent(value: number): string {
-  return `${Math.round(value * 100)}%`
+function formatPercent(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return '--'
+  }
+  return `${Math.round(value)}%`
 }
 
-function formatPlatform(platform: string): string {
-  return platform.replace(/_/g, ' ').toUpperCase()
+function formatDateTime(value: string): string {
+  if (!value) {
+    return '-'
+  }
+  return new Date(value).toLocaleString()
 }
 
-function groupDisplayState(group: GroupPoolStatus): DisplayState {
-  return resolveDisplayState(group.available_account_count, group.availability_ratio)
-}
-
-function groupSummaryText(group: GroupPoolStatus): string {
-  const state = groupDisplayState(group)
-  const percent = formatPercent(group.availability_ratio)
+function groupSummaryText(group: EnterprisePoolStatusGroup): string {
+  const percent = formatPercent(group.health_percent)
   const messages: Record<DisplayState, string> = {
     healthy: t('status.groupHealthy', { percent }),
     degraded: t('status.groupDegraded', { percent }),
     down: t('status.groupDown'),
   }
-
-  return messages[state]
+  return messages[group.health_state]
 }
 
-function hasTrend(groupID: number): boolean {
-  return (historyByGroup.value[groupID]?.length ?? 0) > 1
-}
-
-function pushHistory(nextGroups: GroupPoolStatus[]): void {
-  const nextHistory: Record<number, number[]> = {}
-
-  nextGroups.forEach((group) => {
-    const previous = historyByGroup.value[group.group_id] ?? []
-    nextHistory[group.group_id] = [...previous, group.availability_ratio * 100].slice(-HISTORY_LIMIT)
-  })
-
-  historyByGroup.value = nextHistory
-}
-
-function sparklinePoints(groupID: number): string {
-  const rawValues = historyByGroup.value[groupID] ?? []
-  const values = rawValues.length > 1 ? rawValues : [rawValues[0] ?? 0, rawValues[0] ?? 0]
+function sparklinePoints(points: PoolTrendPoint[]): string {
+  const fallback = points[0]?.health_percent ?? 0
+  const values = points.length > 1
+    ? points
+    : [
+        { bucket_time: '', health_percent: fallback, health_state: 'down' as const },
+        { bucket_time: '', health_percent: fallback, health_state: 'down' as const },
+      ]
   const stepX = (CHART_WIDTH - CHART_PADDING * 2) / (values.length - 1)
 
   return values
-    .map((value, index) => {
+    .map((point, index) => {
       const x = CHART_PADDING + stepX * index
-      const y = CHART_HEIGHT - CHART_PADDING - (Math.max(0, Math.min(100, value)) / 100) * (CHART_HEIGHT - CHART_PADDING * 2)
+      const bounded = Math.max(0, Math.min(100, point.health_percent))
+      const y = CHART_HEIGHT - CHART_PADDING - (bounded / 100) * (CHART_HEIGHT - CHART_PADDING * 2)
       return `${x},${y}`
     })
     .join(' ')
@@ -243,10 +192,7 @@ function sparklinePoints(groupID: number): string {
 async function loadStatus(): Promise<void> {
   loading.value = true
   try {
-    const data = await groupsAPI.getPoolStatus()
-    groups.value = data.groups ?? []
-    pushHistory(groups.value)
-    lastCheck.value = new Date(data.checked_at).toLocaleTimeString()
+    status.value = await groupsAPI.getPoolStatus()
     error.value = ''
   } catch {
     error.value = t('status.loadError')
@@ -353,30 +299,11 @@ onUnmounted(() => {
   margin-bottom: 18px;
 }
 
-.pool-name-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
-
 .pool-name {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
-}
-
-.platform-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 9999px;
-  background: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  margin-bottom: 6px;
 }
 
 .pool-status-text {
@@ -402,31 +329,6 @@ onUnmounted(() => {
   color: var(--color-danger);
 }
 
-.pool-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.pool-metric {
-  padding: 12px;
-  border-radius: var(--radius-md);
-  background: var(--color-bg-secondary);
-}
-
-.pool-metric-label {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.pool-metric strong {
-  font-size: 20px;
-  line-height: 1;
-}
-
 .pool-trend-header {
   display: flex;
   align-items: center;
@@ -447,6 +349,11 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 64px;
+}
+
+.pool-trend-empty {
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 .trend-axis {
@@ -492,10 +399,6 @@ onUnmounted(() => {
   .status-hero {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .pool-metrics {
-    grid-template-columns: 1fr;
   }
 }
 </style>
