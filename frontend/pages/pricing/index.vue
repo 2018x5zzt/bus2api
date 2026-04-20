@@ -4,7 +4,7 @@
       <p class="text-sm font-medium uppercase tracking-[0.24em] text-teal-700">Pricing</p>
       <h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950">价格、额度与消费记录保持清晰透明。</h1>
       <p class="mt-4 text-lg leading-8 text-slate-600">
-        Bus2API 提供按用量追踪与订阅管理能力，你可以在公开页快速了解计费逻辑，在控制台查看账户的实际额度、订阅状态与消费明细。
+        老狗 API 提供按用量追踪与订阅管理能力，你可以在这里了解计费逻辑，并在控制台查看企业账户的实际额度、订阅状态与消费明细。
       </p>
     </div>
 

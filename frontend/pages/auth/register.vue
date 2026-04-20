@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import type { PublicSettings } from '~/types/api-helpers'
+import { isEnterpriseGatewayMode } from '~/utils/gateway-mode'
 
 definePageMeta({ middleware: ['guest-only'] })
 
 const authStore = useAuthStore()
 const { $api } = useApi()
+const config = useRuntimeConfig()
+
+if (isEnterpriseGatewayMode(config.gatewayMode)) {
+  await navigateTo('/auth/login')
+}
 
 const form = reactive({
   email: '',

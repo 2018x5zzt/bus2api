@@ -23,10 +23,14 @@ test('user-facing pages do not ship internal implementation notes', () => {
   const keysPage = readPage('pages/console/keys/index.vue')
   const usagePage = readPage('pages/console/usage/index.vue')
   const securityPage = readPage('pages/console/security.vue')
+  const defaultLayout = readPage('layouts/default.vue')
 
   assert.equal(indexPage.includes('现在的目标不是重做炫酷官网'), false)
   assert.equal(indexPage.includes('最短时间内具备可登录、可管理、可查账的前端'), false)
+  assert.equal(indexPage.includes('先把企业前台最常用的管理链路稳定下来'), false)
   assert.equal(indexPage.includes('OpenAI 兼容接口'), true)
+  assert.equal(indexPage.includes('Bus2API'), false)
+  assert.equal(indexPage.includes('老狗 API'), true)
 
   assert.equal(modelsPage.includes('当前前台先强调能力边界'), false)
   assert.equal(modelsPage.includes('等主链稳定后'), false)
@@ -35,6 +39,7 @@ test('user-facing pages do not ship internal implementation notes', () => {
   assert.equal(pricingPage.includes('第一版价格页先做到清晰可信'), false)
   assert.equal(pricingPage.includes('如果你准备上线公开售卖页面'), false)
   assert.equal(pricingPage.includes('价格、额度与消费记录保持清晰透明'), true)
+  assert.equal(pricingPage.includes('Bus2API'), false)
 
   assert.equal(loginPage.includes('先把最常用的登录链路做稳'), false)
   assert.equal(loginPage.includes('不再依赖旧前端本地存 token 的方式'), false)
@@ -61,4 +66,7 @@ test('user-facing pages do not ship internal implementation notes', () => {
 
   assert.equal(securityPage.includes('现阶段先把 TOTP 状态查看和一键撤销会话做出来'), false)
   assert.equal(securityPage.includes('查看双重验证状态，并在需要时一键撤销全部会话'), true)
+
+  assert.equal(defaultLayout.includes('Bus2API'), false)
+  assert.equal(defaultLayout.includes('老狗 API'), true)
 })

@@ -14,6 +14,7 @@ export default defineEventHandler(async (event) => {
     config.sub2apiBaseUrl,
     path,
     requestUrl.search,
+    config.gatewayMode,
   )
 
   const body = method === 'GET' || method === 'HEAD'

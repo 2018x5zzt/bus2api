@@ -3,6 +3,7 @@ import {
   ensureBearerAuthorizationHeader,
   hasHeader,
 } from '~/utils/request-auth'
+import { rewriteApiPathForGatewayMode } from '~/utils/gateway-mode'
 
 const ACCESS_TOKEN_COOKIE = 'access_token'
 
@@ -39,6 +40,10 @@ export function useApi() {
     url: string,
     opts?: Parameters<typeof $fetch>[1],
   ): Promise<T> {
+    const requestUrl = import.meta.server
+      ? rewriteApiPathForGatewayMode(url, config.gatewayMode)
+      : url
+
     const baseURL = import.meta.server
       ? config.sub2apiBaseUrl
       : (config.public.apiBaseUrl || '')
@@ -50,7 +55,7 @@ export function useApi() {
     }
 
     try {
-      const res = await $fetch<ApiResponse<T>>(url, mergedOpts)
+      const res = await $fetch<ApiResponse<T>>(requestUrl, mergedOpts)
       return res.data
     }
     catch (err: unknown) {
@@ -61,7 +66,7 @@ export function useApi() {
           baseURL: mergedOpts.baseURL,
           headers: buildHeaders(opts as Record<string, unknown>),
         }
-        const res = await $fetch<ApiResponse<T>>(url, retryOpts)
+        const res = await $fetch<ApiResponse<T>>(requestUrl, retryOpts)
         return res.data
       }
       throw err

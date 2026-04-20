@@ -1,4 +1,5 @@
 import { proxyToBackend, setTokenCookies } from '~/server/utils/proxy'
+import { buildEnterpriseLoginBody } from '~/utils/enterprise-login'
 
 interface LoginBackendResponse {
   code: number
@@ -18,6 +19,7 @@ interface LoginBackendResponse {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{
+    company_name: string
     email: string
     password: string
     turnstile_token?: string
@@ -26,7 +28,12 @@ export default defineEventHandler(async (event) => {
   const res = await proxyToBackend<LoginBackendResponse>(
     event,
     '/api/v1/auth/login',
-    body,
+    buildEnterpriseLoginBody({
+      companyName: body.company_name,
+      email: body.email,
+      password: body.password,
+      turnstileToken: body.turnstile_token,
+    }),
   )
 
   const data = res.data

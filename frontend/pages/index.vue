@@ -2,9 +2,18 @@
 const authStore = useAuthStore()
 const accessToken = useCookie<string | null>('access_token')
 const quickStart = [
-  'OpenAI 兼容接口，统一接入多家模型能力。',
-  '按应用、团队或场景拆分 API Key，权限与成本更清晰。',
-  '调用记录、用量统计与账单视图集中管理，方便持续追踪。',
+  {
+    title: '企业登录',
+    description: '使用企业名、邮箱和密码进入控制台，已启用两步验证的账户会继续完成 TOTP 校验。',
+  },
+  {
+    title: 'API Key 管理',
+    description: '登录后可直接创建、启停和删除 API Key，并按企业分组查看可用资源。',
+  },
+  {
+    title: '调用与账单',
+    description: '调用记录、账单订阅和安全设置集中在控制台，便于核账、排错和权限管理。',
+  },
 ]
 
 onMounted(async () => {
@@ -19,20 +28,20 @@ onMounted(async () => {
     <div class="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
       <div>
         <p class="mb-4 inline-flex rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
-          OpenAI 兼容接口 · 多模型统一接入
+          OpenAI 兼容接口 · 企业访问入口
         </p>
         <h1 class="max-w-3xl text-5xl font-semibold tracking-tight text-slate-950 lg:text-6xl">
-          为开发者提供稳定、清晰、可追踪的 AI API 接入体验。
+          登录后统一管理 API Key、调用记录、账单与安全设置。
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-          Bus2API 通过统一域名与鉴权方式接入多家模型能力，并提供 API Key 管理、调用记录、用量统计与账单视图，帮助团队更快上线并持续掌控成本。
+          老狗 API 面向已开通的企业账户提供统一接入与控制台能力。该入口不开放普通用户注册，如需开通或调整企业账户，请联系企业管理员或支持人员。
         </p>
         <div class="mt-8 flex flex-wrap gap-4">
           <NuxtLink
             :to="authStore.isLoggedIn ? '/console' : '/auth/login'"
             class="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
           >
-            {{ authStore.isLoggedIn ? '进入控制台' : '登录使用' }}
+            {{ authStore.isLoggedIn ? '进入控制台' : '企业登录' }}
           </NuxtLink>
           <NuxtLink
             to="/docs"
@@ -44,14 +53,15 @@ onMounted(async () => {
       </div>
 
       <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Why Bus2API</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">企业控制台入口</p>
         <div class="mt-6 grid gap-4">
           <div
             v-for="item in quickStart"
-            :key="item"
+            :key="item.title"
             class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700"
           >
-            {{ item }}
+            <p class="font-medium text-slate-950">{{ item.title }}</p>
+            <p class="mt-2">{{ item.description }}</p>
           </div>
         </div>
       </div>
@@ -59,19 +69,19 @@ onMounted(async () => {
 
     <div class="mt-16 grid gap-4 md:grid-cols-3">
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
-        <p class="text-sm font-medium text-teal-700">统一接入</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">兼容主流调用方式</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">通过统一接口与鉴权方式访问多家模型能力，减少业务侧重复适配成本。</p>
+        <p class="text-sm font-medium text-teal-700">登录链路</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">企业名校验与两步验证</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">企业账户使用企业名、邮箱和密码登录，已启用 TOTP 的账户会在下一步完成动态码校验。</p>
       </article>
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
         <p class="text-sm font-medium text-teal-700">账单透明</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">用量与消费持续可追踪</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">调用次数、Token 和实际消费在控制台统一记录，便于团队核对与优化成本。</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">调用与费用统一核对</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">调用次数、Token 和实际消费在控制台统一记录，便于企业管理员按时间、Key 和模型核账。</p>
       </article>
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
-        <p class="text-sm font-medium text-teal-700">团队可管理</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">API Key 管理更清晰</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">按应用、团队或场景拆分 Key，配合调用记录和账单视图，让协作与对账更高效。</p>
+        <p class="text-sm font-medium text-teal-700">安全控制</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">会话与密钥集中管理</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">支持统一查看 Key 状态、安全设置和会话撤销动作，方便企业管理员集中处理账户安全。</p>
       </article>
     </div>
   </section>

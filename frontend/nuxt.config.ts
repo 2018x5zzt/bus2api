@@ -10,7 +10,7 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/': {
-      prerender: true,
+      ssr: true,
       headers: {
         'cache-control': 'no-store',
       },
@@ -39,8 +39,14 @@ export default defineNuxtConfig({
         'cache-control': 'no-store',
       },
     },
+    '/docs': {
+      ssr: true,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
     '/docs/**': {
-      prerender: true,
+      ssr: true,
       headers: {
         'cache-control': 'no-store',
       },
@@ -79,9 +85,10 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
+    gatewayMode: 'core',
     sub2apiBaseUrl: 'http://localhost:8080',
     public: {
-      siteName: 'Bus2API',
+      siteName: '老狗 API',
       apiBaseUrl: '',
     },
   },

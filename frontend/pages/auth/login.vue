@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import type { UserWithRunMode } from '~/types/api-helpers'
+import {
+  buildEnterpriseLogin2FABody,
+  buildEnterpriseLoginBody,
+  LAST_COMPANY_NAME_KEY,
+} from '~/utils/enterprise-login'
+import { isEnterpriseGatewayMode } from '~/utils/gateway-mode'
 
 definePageMeta({ middleware: ['guest-only'] })
 
 const route = useRoute()
 const authStore = useAuthStore()
+const config = useRuntimeConfig()
+const isEnterprisePortal = isEnterpriseGatewayMode(config.gatewayMode)
 
 const form = reactive({
+  company_name: '',
   email: '',
   password: '',
   totp_code: '',
@@ -44,11 +53,16 @@ async function submitCredentials() {
       }
     }>('/api/auth/login', {
       method: 'POST',
-      body: {
+      body: buildEnterpriseLoginBody({
+        companyName: form.company_name,
         email: form.email,
         password: form.password,
-      },
+      }),
     })
+
+    if (import.meta.client) {
+      window.localStorage.setItem(LAST_COMPANY_NAME_KEY, form.company_name.trim())
+    }
 
     if (response.data.requires_2fa) {
       step.value = '2fa'
@@ -74,10 +88,11 @@ async function submit2FA() {
   try {
     await $fetch('/api/auth/login/2fa', {
       method: 'POST',
-      body: {
-        temp_token: tempToken.value,
-        totp_code: form.totp_code,
-      },
+      body: buildEnterpriseLogin2FABody({
+        companyName: form.company_name,
+        tempToken: tempToken.value,
+        totpCode: form.totp_code,
+      }),
     })
     await completeLogin()
   }
@@ -88,6 +103,14 @@ async function submit2FA() {
     pending.value = false
   }
 }
+
+onMounted(() => {
+  if (!import.meta.client || !isEnterprisePortal) {
+    return
+  }
+
+  form.company_name = window.localStorage.getItem(LAST_COMPANY_NAME_KEY) || ''
+})
 </script>
 
 <template>
@@ -109,12 +132,24 @@ async function submit2FA() {
               {{ step === 'credentials' ? '输入账户信息' : '输入 6 位动态码' }}
             </h2>
           </div>
-          <NuxtLink to="/auth/register" class="text-sm font-medium text-teal-700 hover:text-teal-800">
+          <NuxtLink v-if="!isEnterprisePortal" to="/auth/register" class="text-sm font-medium text-teal-700 hover:text-teal-800">
             没有账号？注册
           </NuxtLink>
         </div>
 
         <form v-if="step === 'credentials'" class="grid gap-5" @submit.prevent="submitCredentials">
+          <label v-if="isEnterprisePortal" class="grid gap-2 text-sm font-medium text-slate-700">
+            企业名
+            <input
+              v-model="form.company_name"
+              type="text"
+              required
+              autocomplete="organization"
+              class="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-500"
+              placeholder="请输入企业标识"
+            >
+          </label>
+
           <label class="grid gap-2 text-sm font-medium text-slate-700">
             邮箱
             <input
@@ -153,6 +188,16 @@ async function submit2FA() {
         </form>
 
         <form v-else class="grid gap-5" @submit.prevent="submit2FA">
+          <label v-if="isEnterprisePortal" class="grid gap-2 text-sm font-medium text-slate-700">
+            企业名
+            <input
+              v-model="form.company_name"
+              type="text"
+              readonly
+              class="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none"
+            >
+          </label>
+
           <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
             账户 {{ maskedEmail }} 已启用两步验证，请输入动态码继续。
           </div>

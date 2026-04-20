@@ -1,6 +1,7 @@
 import {
   ensureBearerAuthorizationHeader,
 } from '~/utils/request-auth'
+import { rewriteApiPathForGatewayMode } from '~/utils/gateway-mode'
 
 const REQUEST_HOP_BY_HOP_HEADERS = new Set([
   'connection',
@@ -19,9 +20,14 @@ export function buildApiV1ProxyTarget(
   baseUrl: string,
   path: string,
   search = '',
+  gatewayMode = 'core',
 ): string {
   const normalizedPath = path.replace(/^\/+/, '')
-  const url = new URL(`/api/v1/${normalizedPath}`, ensureTrailingSlash(baseUrl))
+  const targetPath = rewriteApiPathForGatewayMode(
+    `/api/v1/${normalizedPath}`,
+    gatewayMode,
+  )
+  const url = new URL(targetPath, ensureTrailingSlash(baseUrl))
   url.search = search.startsWith('?') ? search.slice(1) : search
   return url.toString()
 }

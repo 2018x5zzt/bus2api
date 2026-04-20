@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { rewriteApiPathForGatewayMode } from '~/utils/gateway-mode'
 
 const TOKEN_COOKIE_MAX_AGE_FALLBACK = 3600 // 1h
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 3600 // 7d
@@ -13,7 +14,8 @@ export async function proxyToBackend<T>(
   body?: Record<string, unknown>,
 ): Promise<T> {
   const config = useRuntimeConfig(event)
-  const url = `${config.sub2apiBaseUrl}${path}`
+  const resolvedPath = rewriteApiPathForGatewayMode(path, config.gatewayMode)
+  const url = `${config.sub2apiBaseUrl}${resolvedPath}`
 
   const res = await $fetch<T>(url, {
     method: 'POST',

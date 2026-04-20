@@ -1,4 +1,5 @@
 import { proxyToBackend, setTokenCookies } from '~/server/utils/proxy'
+import { buildEnterpriseLogin2FABody } from '~/utils/enterprise-login'
 
 interface Login2FABackendResponse {
   code: number
@@ -14,6 +15,7 @@ interface Login2FABackendResponse {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{
+    company_name: string
     temp_token: string
     totp_code: string
   }>(event)
@@ -21,7 +23,11 @@ export default defineEventHandler(async (event) => {
   const res = await proxyToBackend<Login2FABackendResponse>(
     event,
     '/api/v1/auth/login/2fa',
-    body,
+    buildEnterpriseLogin2FABody({
+      companyName: body.company_name,
+      tempToken: body.temp_token,
+      totpCode: body.totp_code,
+    }),
   )
 
   const data = res.data
