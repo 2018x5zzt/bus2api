@@ -1,4 +1,8 @@
 import type { ApiResponse } from '~/types/api-helpers'
+import {
+  ensureBearerAuthorizationHeader,
+  hasHeader,
+} from '~/utils/request-auth'
 
 const ACCESS_TOKEN_COOKIE = 'access_token'
 
@@ -8,25 +12,24 @@ export function useApi() {
   const config = useRuntimeConfig()
 
   function buildHeaders(opts?: Record<string, unknown>): HeadersInit {
-    const headers: Record<string, string> = {}
+    const headers = normalizeHeaders(
+      (opts as { headers?: HeadersInit })?.headers,
+    )
 
     if (import.meta.server) {
       const reqHeaders = useRequestHeaders(['cookie'])
-      if (reqHeaders.cookie) {
+      if (reqHeaders.cookie && !hasHeader(headers, 'cookie')) {
         headers.cookie = reqHeaders.cookie
       }
+
+      ensureBearerAuthorizationHeader(headers)
     }
 
     if (import.meta.client) {
       const token = useCookie(ACCESS_TOKEN_COOKIE)
-      if (token.value) {
+      if (token.value && !hasHeader(headers, 'authorization')) {
         headers.Authorization = `Bearer ${token.value}`
       }
-    }
-
-    const callerHeaders = (opts as { headers?: Record<string, string> })?.headers
-    if (callerHeaders) {
-      Object.assign(headers, callerHeaders)
     }
 
     return headers
@@ -101,4 +104,20 @@ async function doRefresh(): Promise<void> {
 function clearAuth(): void {
   const accessToken = useCookie(ACCESS_TOKEN_COOKIE)
   accessToken.value = null
+}
+
+function normalizeHeaders(input?: HeadersInit): Record<string, string> {
+  if (!input) {
+    return {}
+  }
+
+  if (input instanceof Headers) {
+    return Object.fromEntries(input.entries())
+  }
+
+  if (Array.isArray(input)) {
+    return Object.fromEntries(input)
+  }
+
+  return { ...input }
 }

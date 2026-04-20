@@ -5,14 +5,21 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 const mockFetch = vi.fn()
 const mockCookieValue = { value: 'test-access-token' }
 const mockRoute = { fullPath: '/console/dashboard' }
+const mockRouter = {
+  afterEach: vi.fn(),
+  beforeResolve: vi.fn(() => vi.fn()),
+}
+
+vi.stubGlobal('$fetch', mockFetch)
 
 // Mock Nuxt auto-imports
-mockNuxtImport('$fetch', () => mockFetch)
 mockNuxtImport('useCookie', () => () => mockCookieValue)
 mockNuxtImport('useRoute', () => () => mockRoute)
+mockNuxtImport('useRouter', () => () => mockRouter)
 mockNuxtImport('useRuntimeConfig', () => () => ({
+  app: { baseURL: '/' },
   sub2apiBaseUrl: 'http://localhost:8080',
-  public: { siteName: 'Test' },
+  public: { siteName: 'Test', apiBaseUrl: '' },
 }))
 mockNuxtImport('useRequestHeaders', () => () => ({}))
 mockNuxtImport('navigateTo', () => vi.fn())
