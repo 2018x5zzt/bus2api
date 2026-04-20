@@ -5,14 +5,14 @@ import {
   buildEnterpriseLoginBody,
   LAST_COMPANY_NAME_KEY,
 } from '~/utils/enterprise-login'
-import { isEnterpriseGatewayMode } from '~/utils/gateway-mode'
+import { isEnterpriseGatewayMode, resolveGatewayMode } from '~/utils/gateway-mode'
 
 definePageMeta({ middleware: ['guest-only'] })
 
 const route = useRoute()
 const authStore = useAuthStore()
 const config = useRuntimeConfig()
-const isEnterprisePortal = isEnterpriseGatewayMode(config.gatewayMode)
+const isEnterprisePortal = computed(() => isEnterpriseGatewayMode(resolveGatewayMode(config)))
 
 const form = reactive({
   company_name: '',
@@ -105,7 +105,7 @@ async function submit2FA() {
 }
 
 onMounted(() => {
-  if (!import.meta.client || !isEnterprisePortal) {
+  if (!import.meta.client || !isEnterprisePortal.value) {
     return
   }
 

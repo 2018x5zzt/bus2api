@@ -85,11 +85,12 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    gatewayMode: 'core',
+    gatewayMode: process.env.NUXT_GATEWAY_MODE || process.env.NUXT_PUBLIC_GATEWAY_MODE || 'core',
     sub2apiBaseUrl: 'http://localhost:8080',
     public: {
       siteName: '老狗 API',
       apiBaseUrl: '',
+      gatewayMode: process.env.NUXT_PUBLIC_GATEWAY_MODE || process.env.NUXT_GATEWAY_MODE || 'core',
     },
   },
 

@@ -1,7 +1,20 @@
 export type GatewayMode = 'core' | 'enterprise'
 
+interface GatewayModeRuntimeConfigLike {
+  gatewayMode?: string
+  public?: Record<string, unknown>
+}
+
 export function normalizeGatewayMode(mode?: string): GatewayMode {
   return mode === 'enterprise' ? 'enterprise' : 'core'
+}
+
+export function resolveGatewayMode(config?: GatewayModeRuntimeConfigLike): GatewayMode {
+  const publicGatewayMode = typeof config?.public?.gatewayMode === 'string'
+    ? config.public.gatewayMode
+    : undefined
+
+  return normalizeGatewayMode(publicGatewayMode || config?.gatewayMode)
 }
 
 export function isEnterpriseGatewayMode(mode?: string): boolean {

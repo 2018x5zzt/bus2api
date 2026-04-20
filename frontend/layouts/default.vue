@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { isEnterpriseGatewayMode } from '~/utils/gateway-mode'
+import { isEnterpriseGatewayMode, resolveGatewayMode } from '~/utils/gateway-mode'
 
 const authStore = useAuthStore()
 const accessToken = useCookie<string | null>('access_token')
 const config = useRuntimeConfig()
-const isEnterprisePortal = computed(() => isEnterpriseGatewayMode(config.gatewayMode))
+const isEnterprisePortal = computed(() => isEnterpriseGatewayMode(resolveGatewayMode(config)))
 const brandName = computed(() => config.public.siteName || '老狗 API')
 const navigation = computed(() => isEnterprisePortal.value
   ? [

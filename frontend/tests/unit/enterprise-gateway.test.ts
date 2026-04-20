@@ -5,8 +5,26 @@ import {
   buildEnterpriseLoginBody,
 } from '~/utils/enterprise-login'
 import {
+  resolveGatewayMode,
   rewriteApiPathForGatewayMode,
 } from '~/utils/gateway-mode'
+
+describe('resolveGatewayMode', () => {
+  it('reads enterprise mode from public runtime config for hydrated client pages', () => {
+    expect(resolveGatewayMode({
+      public: {
+        gatewayMode: 'enterprise',
+      },
+    })).toBe('enterprise')
+  })
+
+  it('falls back to the private runtime config on the server', () => {
+    expect(resolveGatewayMode({
+      gatewayMode: 'enterprise',
+      public: {},
+    })).toBe('enterprise')
+  })
+})
 
 describe('rewriteApiPathForGatewayMode', () => {
   it('keeps /api/v1 paths unchanged in core mode', () => {
