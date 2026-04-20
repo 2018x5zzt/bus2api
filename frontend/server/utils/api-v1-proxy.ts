@@ -1,6 +1,8 @@
 import {
   ensureBearerAuthorizationHeader,
+  hasHeader,
 } from '~/utils/request-auth'
+import { buildContractHeaders } from '~/utils/contract-headers'
 import { rewriteApiPathForGatewayMode } from '~/utils/gateway-mode'
 
 const REQUEST_HOP_BY_HOP_HEADERS = new Set([
@@ -34,6 +36,10 @@ export function buildApiV1ProxyTarget(
 
 export function buildApiV1ProxyHeaders(
   requestHeaders: Record<string, string | string[] | undefined>,
+  options?: {
+    gatewayMode?: string
+    method?: string
+  },
 ): Record<string, string> {
   const headers: Record<string, string> = {}
 
@@ -45,7 +51,19 @@ export function buildApiV1ProxyHeaders(
     headers[key] = Array.isArray(value) ? value.join(', ') : value
   }
 
-  return ensureBearerAuthorizationHeader(headers)
+  ensureBearerAuthorizationHeader(headers)
+
+  if (options?.gatewayMode === 'enterprise') {
+    const contractHeaders = buildContractHeaders(options.method)
+
+    for (const [key, value] of Object.entries(contractHeaders)) {
+      if (!hasHeader(headers, key)) {
+        headers[key] = value
+      }
+    }
+  }
+
+  return headers
 }
 
 function ensureTrailingSlash(url: string): string {

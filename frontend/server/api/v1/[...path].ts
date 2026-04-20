@@ -26,7 +26,10 @@ export default defineEventHandler(async (event) => {
   try {
     upstream = await fetch(targetUrl, {
       method,
-      headers: buildApiV1ProxyHeaders(event.node.req.headers),
+      headers: buildApiV1ProxyHeaders(event.node.req.headers, {
+        gatewayMode: config.gatewayMode,
+        method,
+      }),
       body,
       redirect: 'manual',
     })

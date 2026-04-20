@@ -43,4 +43,54 @@ describe('buildApiV1ProxyHeaders', () => {
       authorization: 'Bearer upstream-token',
     })
   })
+
+  it('adds enterprise contract headers for read requests in enterprise mode', () => {
+    const headers = buildApiV1ProxyHeaders(
+      {
+        cookie: 'access_token=browser-token-789',
+        accept: 'application/json',
+      },
+      {
+        gatewayMode: 'enterprise',
+        method: 'GET',
+      },
+    )
+
+    expect(headers).toMatchObject({
+      cookie: 'access_token=browser-token-789',
+      accept: 'application/json',
+      Authorization: 'Bearer browser-token-789',
+      'X-Contract-Version': 'v2',
+    })
+    expect(headers['X-Request-ID']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    expect(headers['X-Idempotency-Key']).toBeUndefined()
+  })
+
+  it('adds an idempotency key for enterprise write requests', () => {
+    const headers = buildApiV1ProxyHeaders(
+      {
+        cookie: 'access_token=browser-token-789',
+        'content-type': 'application/json',
+      },
+      {
+        gatewayMode: 'enterprise',
+        method: 'POST',
+      },
+    )
+
+    expect(headers).toMatchObject({
+      cookie: 'access_token=browser-token-789',
+      'content-type': 'application/json',
+      Authorization: 'Bearer browser-token-789',
+      'X-Contract-Version': 'v2',
+    })
+    expect(headers['X-Request-ID']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    expect(headers['X-Idempotency-Key']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+  })
 })
