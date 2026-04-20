@@ -36,3 +36,12 @@ _sub2api_ref/
 
 # OMC state
 .omc/
+
+# Nuxt
+.nuxt/
+.output/
+.nitro/
+.cache/
+
+# Legacy frontend
+legacy-frontend/node_modules/

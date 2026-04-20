@@ -1,0 +1,2435 @@
+openapi: 3.0.3
+info:
+  title: sub2api User API
+  version: v1
+  description: |
+    User-facing API contract for sub2api backend.
+    Covers public + authenticated user endpoints (no admin/gateway).
+
+servers:
+  - url: '{baseUrl}'
+    variables:
+      baseUrl:
+        default: http://localhost:8080
+
+tags:
+  - name: Auth
+    description: Authentication & registration
+  - name: User
+    description: User profile management
+  - name: TOTP
+    description: Two-factor authentication
+  - name: Keys
+    description: API key management
+  - name: Groups
+    description: Group information
+  - name: Usage
+    description: Usage logs & statistics
+  - name: Dashboard
+    description: Dashboard analytics
+  - name: Announcements
+    description: User announcements
+  - name: Redeem
+    description: Redeem codes
+  - name: Subscriptions
+    description: User subscriptions
+  - name: Settings
+    description: Public settings
+
+# ── Security ──────────────────────────────────────────────
+security: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ── Reusable Schemas ──────────────────────────────────
+  schemas:
+    # ── Envelope ──
+    ApiResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: '0 = success, otherwise HTTP status code'
+        message:
+          type: string
+        reason:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        data: {}
+
+    PaginatedData:
+      type: object
+      required: [items, total, page, page_size, pages]
+      properties:
+        items:
+          type: array
+          items: {}
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        page_size:
+          type: integer
+        pages:
+          type: integer
+
+    # ── Entities ──
+    User:
+      type: object
+      required: [id, email, username, role, balance, concurrency, status, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        role:
+          type: string
+        balance:
+          type: number
+          format: double
+        concurrency:
+          type: integer
+        status:
+          type: string
+        allowed_groups:
+          type: array
+          items:
+            type: integer
+            format: int64
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        api_keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/APIKey'
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSubscription'
+
+    APIKey:
+      type: object
+      required: [id, user_id, key, name, status, quota, quota_used, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        key:
+          type: string
+        name:
+          type: string
+        group_id:
+          type: integer
+          format: int64
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+        ip_blacklist:
+          type: array
+          items:
+            type: string
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        quota:
+          type: number
+          format: double
+          description: 'USD, 0 = unlimited'
+        quota_used:
+          type: number
+          format: double
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        rate_limit_5h:
+          type: number
+          format: double
+        rate_limit_1d:
+          type: number
+          format: double
+        rate_limit_7d:
+          type: number
+          format: double
+        usage_5h:
+          type: number
+          format: double
+        usage_1d:
+          type: number
+          format: double
+        usage_7d:
+          type: number
+          format: double
+        window_5h_start:
+          type: string
+          format: date-time
+          nullable: true
+        window_1d_start:
+          type: string
+          format: date-time
+          nullable: true
+        window_7d_start:
+          type: string
+          format: date-time
+          nullable: true
+        reset_5h_at:
+          type: string
+          format: date-time
+          nullable: true
+        reset_1d_at:
+          type: string
+          format: date-time
+          nullable: true
+        reset_7d_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+        group:
+          $ref: '#/components/schemas/Group'
+
+    Group:
+      type: object
+      required: [id, name, description, platform, rate_multiplier, is_exclusive, status, subscription_type, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        platform:
+          type: string
+        rate_multiplier:
+          type: number
+          format: double
+        is_exclusive:
+          type: boolean
+        status:
+          type: string
+        subscription_type:
+          type: string
+        daily_limit_usd:
+          type: number
+          format: double
+          nullable: true
+        weekly_limit_usd:
+          type: number
+          format: double
+          nullable: true
+        monthly_limit_usd:
+          type: number
+          format: double
+          nullable: true
+        image_price_1k:
+          type: number
+          format: double
+          nullable: true
+        image_price_2k:
+          type: number
+          format: double
+          nullable: true
+        image_price_4k:
+          type: number
+          format: double
+          nullable: true
+        claude_code_only:
+          type: boolean
+        fallback_group_id:
+          type: integer
+          format: int64
+          nullable: true
+        fallback_group_id_on_invalid_request:
+          type: integer
+          format: int64
+          nullable: true
+        allow_messages_dispatch:
+          type: boolean
+        require_oauth_only:
+          type: boolean
+        require_privacy_set:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UsageLog:
+      type: object
+      required: [id, user_id, api_key_id, account_id, request_id, model, input_tokens, output_tokens, total_cost, actual_cost, rate_multiplier, billing_type, request_type, stream, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        api_key_id:
+          type: integer
+          format: int64
+        account_id:
+          type: integer
+          format: int64
+        request_id:
+          type: string
+        model:
+          type: string
+        service_tier:
+          type: string
+          nullable: true
+        reasoning_effort:
+          type: string
+          nullable: true
+        inbound_endpoint:
+          type: string
+          nullable: true
+        upstream_endpoint:
+          type: string
+          nullable: true
+        group_id:
+          type: integer
+          format: int64
+          nullable: true
+        subscription_id:
+          type: integer
+          format: int64
+          nullable: true
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        cache_creation_tokens:
+          type: integer
+        cache_read_tokens:
+          type: integer
+        cache_creation_5m_tokens:
+          type: integer
+        cache_creation_1h_tokens:
+          type: integer
+        input_cost:
+          type: number
+          format: double
+        output_cost:
+          type: number
+          format: double
+        cache_creation_cost:
+          type: number
+          format: double
+        cache_read_cost:
+          type: number
+          format: double
+        total_cost:
+          type: number
+          format: double
+        actual_cost:
+          type: number
+          format: double
+        rate_multiplier:
+          type: number
+          format: double
+        billing_type:
+          type: integer
+        request_type:
+          type: string
+        stream:
+          type: boolean
+        openai_ws_mode:
+          type: boolean
+        duration_ms:
+          type: integer
+          nullable: true
+        first_token_ms:
+          type: integer
+          nullable: true
+        image_count:
+          type: integer
+        image_size:
+          type: string
+          nullable: true
+        media_type:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        cache_ttl_overridden:
+          type: boolean
+        billing_mode:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+        api_key:
+          $ref: '#/components/schemas/APIKey'
+        group:
+          $ref: '#/components/schemas/Group'
+        subscription:
+          $ref: '#/components/schemas/UserSubscription'
+
+    UserSubscription:
+      type: object
+      required: [id, user_id, group_id, starts_at, expires_at, status, daily_usage_usd, weekly_usage_usd, monthly_usage_usd, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        group_id:
+          type: integer
+          format: int64
+        starts_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+        daily_window_start:
+          type: string
+          format: date-time
+          nullable: true
+        weekly_window_start:
+          type: string
+          format: date-time
+          nullable: true
+        monthly_window_start:
+          type: string
+          format: date-time
+          nullable: true
+        daily_usage_usd:
+          type: number
+          format: double
+        weekly_usage_usd:
+          type: number
+          format: double
+        monthly_usage_usd:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+        group:
+          $ref: '#/components/schemas/Group'
+
+    UserAnnouncement:
+      type: object
+      required: [id, title, content, notify_mode, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        content:
+          type: string
+        notify_mode:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+          nullable: true
+        ends_at:
+          type: string
+          format: date-time
+          nullable: true
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RedeemCode:
+      type: object
+      required: [id, code, type, value, status, validity_days, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+        type:
+          type: string
+        value:
+          type: number
+          format: double
+        status:
+          type: string
+        used_by:
+          type: integer
+          format: int64
+          nullable: true
+        used_at:
+          type: string
+          format: date-time
+          nullable: true
+        group_id:
+          type: integer
+          format: int64
+          nullable: true
+        validity_days:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+        group:
+          $ref: '#/components/schemas/Group'
+
+    PublicSettings:
+      type: object
+      required: [registration_enabled, email_verify_enabled, totp_enabled, turnstile_enabled, site_name, version]
+      properties:
+        registration_enabled:
+          type: boolean
+        email_verify_enabled:
+          type: boolean
+        registration_email_suffix_whitelist:
+          type: array
+          items:
+            type: string
+        promo_code_enabled:
+          type: boolean
+        password_reset_enabled:
+          type: boolean
+        invitation_code_enabled:
+          type: boolean
+        totp_enabled:
+          type: boolean
+        turnstile_enabled:
+          type: boolean
+        turnstile_site_key:
+          type: string
+        site_name:
+          type: string
+        site_logo:
+          type: string
+        site_subtitle:
+          type: string
+        api_base_url:
+          type: string
+        contact_info:
+          type: string
+        doc_url:
+          type: string
+        home_content:
+          type: string
+        hide_ccs_import_button:
+          type: boolean
+        purchase_subscription_enabled:
+          type: boolean
+        purchase_subscription_url:
+          type: string
+        custom_menu_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomMenuItem'
+        custom_endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomEndpoint'
+        linuxdo_oauth_enabled:
+          type: boolean
+        backend_mode_enabled:
+          type: boolean
+        version:
+          type: string
+
+    CustomMenuItem:
+      type: object
+      required: [id, label, url, visibility, sort_order]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        icon_svg:
+          type: string
+        url:
+          type: string
+        visibility:
+          type: string
+        sort_order:
+          type: integer
+
+    CustomEndpoint:
+      type: object
+      required: [name, endpoint]
+      properties:
+        name:
+          type: string
+        endpoint:
+          type: string
+        description:
+          type: string
+
+    # ── Auth DTOs ──
+    AuthResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    TotpLoginResponse:
+      type: object
+      required: [requires_2fa]
+      properties:
+        requires_2fa:
+          type: boolean
+        temp_token:
+          type: string
+        user_email_masked:
+          type: string
+
+    RefreshTokenResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, token_type]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+
+    SendVerifyCodeResponse:
+      type: object
+      required: [message, countdown]
+      properties:
+        message:
+          type: string
+        countdown:
+          type: integer
+
+    ValidatePromoCodeResponse:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+        bonus_amount:
+          type: number
+          format: double
+        error_code:
+          type: string
+        message:
+          type: string
+
+    ValidateInvitationCodeResponse:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+        error_code:
+          type: string
+
+    # ── User response with run_mode ──
+    UserWithRunMode:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [run_mode]
+          properties:
+            run_mode:
+              type: string
+
+    # ── TOTP DTOs ──
+    TotpStatusResponse:
+      type: object
+      required: [enabled, feature_enabled]
+      properties:
+        enabled:
+          type: boolean
+        enabled_at:
+          type: integer
+          format: int64
+          nullable: true
+        feature_enabled:
+          type: boolean
+
+    TotpSetupResponse:
+      type: object
+      required: [secret, qr_code_url, setup_token, countdown]
+      properties:
+        secret:
+          type: string
+        qr_code_url:
+          type: string
+        setup_token:
+          type: string
+        countdown:
+          type: integer
+
+    # ── Usage/Dashboard DTOs ──
+    UsageStats:
+      type: object
+      required: [total_requests, total_input_tokens, total_output_tokens, total_cache_tokens, total_tokens, total_cost, total_actual_cost, average_duration_ms]
+      properties:
+        total_requests:
+          type: integer
+          format: int64
+        total_input_tokens:
+          type: integer
+          format: int64
+        total_output_tokens:
+          type: integer
+          format: int64
+        total_cache_tokens:
+          type: integer
+          format: int64
+        total_tokens:
+          type: integer
+          format: int64
+        total_cost:
+          type: number
+          format: double
+        total_actual_cost:
+          type: number
+          format: double
+        average_duration_ms:
+          type: number
+          format: double
+
+    UserDashboardStats:
+      type: object
+      required: [total_api_keys, active_api_keys, total_requests, total_tokens, total_cost, total_actual_cost, today_requests, today_tokens, today_cost, today_actual_cost]
+      properties:
+        total_api_keys:
+          type: integer
+          format: int64
+        active_api_keys:
+          type: integer
+          format: int64
+        total_requests:
+          type: integer
+          format: int64
+        total_input_tokens:
+          type: integer
+          format: int64
+        total_output_tokens:
+          type: integer
+          format: int64
+        total_cache_creation_tokens:
+          type: integer
+          format: int64
+        total_cache_read_tokens:
+          type: integer
+          format: int64
+        total_tokens:
+          type: integer
+          format: int64
+        total_cost:
+          type: number
+          format: double
+        total_actual_cost:
+          type: number
+          format: double
+        today_requests:
+          type: integer
+          format: int64
+        today_input_tokens:
+          type: integer
+          format: int64
+        today_output_tokens:
+          type: integer
+          format: int64
+        today_cache_creation_tokens:
+          type: integer
+          format: int64
+        today_cache_read_tokens:
+          type: integer
+          format: int64
+        today_tokens:
+          type: integer
+          format: int64
+        today_cost:
+          type: number
+          format: double
+        today_actual_cost:
+          type: number
+          format: double
+        average_duration_ms:
+          type: number
+          format: double
+        rpm:
+          type: integer
+          format: int64
+        tpm:
+          type: integer
+          format: int64
+
+    TrendDataPoint:
+      type: object
+      required: [date, requests, input_tokens, output_tokens, total_tokens, cost, actual_cost]
+      properties:
+        date:
+          type: string
+        requests:
+          type: integer
+          format: int64
+        input_tokens:
+          type: integer
+          format: int64
+        output_tokens:
+          type: integer
+          format: int64
+        cache_creation_tokens:
+          type: integer
+          format: int64
+        cache_read_tokens:
+          type: integer
+          format: int64
+        total_tokens:
+          type: integer
+          format: int64
+        cost:
+          type: number
+          format: double
+        actual_cost:
+          type: number
+          format: double
+
+    ModelStat:
+      type: object
+      required: [model, requests, input_tokens, output_tokens, total_tokens, cost, actual_cost]
+      properties:
+        model:
+          type: string
+        requests:
+          type: integer
+          format: int64
+        input_tokens:
+          type: integer
+          format: int64
+        output_tokens:
+          type: integer
+          format: int64
+        cache_creation_tokens:
+          type: integer
+          format: int64
+        cache_read_tokens:
+          type: integer
+          format: int64
+        total_tokens:
+          type: integer
+          format: int64
+        cost:
+          type: number
+          format: double
+        actual_cost:
+          type: number
+          format: double
+
+    BatchAPIKeyUsageStats:
+      type: object
+      required: [api_key_id, today_actual_cost, total_actual_cost]
+      properties:
+        api_key_id:
+          type: integer
+          format: int64
+        today_actual_cost:
+          type: number
+          format: double
+        total_actual_cost:
+          type: number
+          format: double
+
+    # ── Subscription DTOs ──
+    UsageWindowProgress:
+      type: object
+      required: [limit_usd, used_usd, remaining_usd, percentage, window_start, resets_at, resets_in_seconds]
+      properties:
+        limit_usd:
+          type: number
+          format: double
+        used_usd:
+          type: number
+          format: double
+        remaining_usd:
+          type: number
+          format: double
+        percentage:
+          type: number
+          format: double
+        window_start:
+          type: string
+          format: date-time
+        resets_at:
+          type: string
+          format: date-time
+        resets_in_seconds:
+          type: integer
+          format: int64
+
+    SubscriptionProgress:
+      type: object
+      required: [id, group_name, expires_at, expires_in_days]
+      properties:
+        id:
+          type: integer
+          format: int64
+        group_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        expires_in_days:
+          type: integer
+        daily:
+          $ref: '#/components/schemas/UsageWindowProgress'
+        weekly:
+          $ref: '#/components/schemas/UsageWindowProgress'
+        monthly:
+          $ref: '#/components/schemas/UsageWindowProgress'
+
+    SubscriptionProgressInfo:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/UserSubscription'
+        progress:
+          $ref: '#/components/schemas/SubscriptionProgress'
+
+    SubscriptionSummaryItem:
+      type: object
+      required: [id, group_id, group_name, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        group_id:
+          type: integer
+          format: int64
+        group_name:
+          type: string
+        status:
+          type: string
+        daily_used_usd:
+          type: number
+          format: double
+        daily_limit_usd:
+          type: number
+          format: double
+        weekly_used_usd:
+          type: number
+          format: double
+        weekly_limit_usd:
+          type: number
+          format: double
+        monthly_used_usd:
+          type: number
+          format: double
+        monthly_limit_usd:
+          type: number
+          format: double
+        expires_at:
+          type: string
+          nullable: true
+
+    SubscriptionSummary:
+      type: object
+      required: [active_count, total_used_usd, subscriptions]
+      properties:
+        active_count:
+          type: integer
+        total_used_usd:
+          type: number
+          format: double
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionSummaryItem'
+
+    # ── Generic message response ──
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    # ── Dashboard Trend response ──
+    DashboardTrendResponse:
+      type: object
+      required: [trend, start_date, end_date, granularity]
+      properties:
+        trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrendDataPoint'
+        start_date:
+          type: string
+        end_date:
+          type: string
+        granularity:
+          type: string
+
+    DashboardModelsResponse:
+      type: object
+      required: [models, start_date, end_date]
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelStat'
+        start_date:
+          type: string
+        end_date:
+          type: string
+
+    # ── Verification method ──
+    VerificationMethod:
+      type: object
+      required: [method]
+      properties:
+        method:
+          type: string
+
+  # ── Reusable Parameters ──
+  parameters:
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      in: query
+      name: page_size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 20
+
+# ── Paths ─────────────────────────────────────────────────
+paths:
+  # ── Settings ──
+  /api/v1/settings/public:
+    get:
+      tags: [Settings]
+      summary: Get public settings
+      operationId: getPublicSettings
+      responses:
+        '200':
+          description: Public settings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PublicSettings'
+
+  # ── Auth (public) ──
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                verify_code:
+                  type: string
+                turnstile_token:
+                  type: string
+                promo_code:
+                  type: string
+                invitation_code:
+                  type: string
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResponse'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                turnstile_token:
+                  type: string
+      responses:
+        '200':
+          description: Login successful (or requires 2FA)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - $ref: '#/components/schemas/AuthResponse'
+                          - $ref: '#/components/schemas/TotpLoginResponse'
+
+  /api/v1/auth/login/2fa:
+    post:
+      tags: [Auth]
+      summary: Complete 2FA login
+      operationId: login2fa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [temp_token, totp_code]
+              properties:
+                temp_token:
+                  type: string
+                totp_code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        '200':
+          description: 2FA login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthResponse'
+
+  /api/v1/auth/send-verify-code:
+    post:
+      tags: [Auth]
+      summary: Send email verification code
+      operationId: sendVerifyCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                turnstile_token:
+                  type: string
+      responses:
+        '200':
+          description: Code sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SendVerifyCodeResponse'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RefreshTokenResponse'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      operationId: logout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  /api/v1/auth/validate-promo-code:
+    post:
+      tags: [Auth]
+      summary: Validate promo code
+      operationId: validatePromoCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ValidatePromoCodeResponse'
+
+  /api/v1/auth/validate-invitation-code:
+    post:
+      tags: [Auth]
+      summary: Validate invitation code
+      operationId: validateInvitationCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ValidateInvitationCodeResponse'
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      operationId: forgotPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                turnstile_token:
+                  type: string
+      responses:
+        '200':
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      operationId: resetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, token, new_password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                token:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  # ── Auth (authenticated) ──
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user with run_mode
+      operationId: getMe
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserWithRunMode'
+
+  /api/v1/auth/revoke-all-sessions:
+    post:
+      tags: [Auth]
+      summary: Revoke all sessions
+      operationId: revokeAllSessions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sessions revoked
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  # ── User ──
+  /api/v1/user/profile:
+    get:
+      tags: [User]
+      summary: Get user profile
+      operationId: getUserProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/user:
+    put:
+      tags: [User]
+      summary: Update user profile
+      operationId: updateUserProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/user/password:
+    put:
+      tags: [User]
+      summary: Change password
+      operationId: changePassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old_password, new_password]
+              properties:
+                old_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  # ── TOTP ──
+  /api/v1/user/totp/status:
+    get:
+      tags: [TOTP]
+      summary: Get TOTP status
+      operationId: getTotpStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: TOTP status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TotpStatusResponse'
+
+  /api/v1/user/totp/verification-method:
+    get:
+      tags: [TOTP]
+      summary: Get verification method for TOTP setup/disable
+      operationId: getTotpVerificationMethod
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification method
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VerificationMethod'
+
+  /api/v1/user/totp/send-code:
+    post:
+      tags: [TOTP]
+      summary: Send email verification code for TOTP operations
+      operationId: sendTotpCode
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Code sent
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SuccessResponse'
+
+  /api/v1/user/totp/setup:
+    post:
+      tags: [TOTP]
+      summary: Setup TOTP (get QR code)
+      operationId: setupTotp
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email_code:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: TOTP setup info
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TotpSetupResponse'
+
+  /api/v1/user/totp/enable:
+    post:
+      tags: [TOTP]
+      summary: Enable TOTP with verification code
+      operationId: enableTotp
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [totp_code, setup_token]
+              properties:
+                totp_code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                setup_token:
+                  type: string
+      responses:
+        '200':
+          description: TOTP enabled
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SuccessResponse'
+
+  /api/v1/user/totp/disable:
+    post:
+      tags: [TOTP]
+      summary: Disable TOTP
+      operationId: disableTotp
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email_code:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: TOTP disabled
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SuccessResponse'
+
+  # ── API Keys ──
+  /api/v1/keys:
+    get:
+      tags: [Keys]
+      summary: List API keys (paginated)
+      operationId: listKeys
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: search
+          schema:
+            type: string
+            maxLength: 100
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, inactive]
+        - in: query
+          name: group_id
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Paginated API keys
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/PaginatedData'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/APIKey'
+    post:
+      tags: [Keys]
+      summary: Create API key
+      operationId: createKey
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                group_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+                custom_key:
+                  type: string
+                  nullable: true
+                ip_whitelist:
+                  type: array
+                  items:
+                    type: string
+                ip_blacklist:
+                  type: array
+                  items:
+                    type: string
+                quota:
+                  type: number
+                  format: double
+                  nullable: true
+                expires_in_days:
+                  type: integer
+                  nullable: true
+                rate_limit_5h:
+                  type: number
+                  format: double
+                  nullable: true
+                rate_limit_1d:
+                  type: number
+                  format: double
+                  nullable: true
+                rate_limit_7d:
+                  type: number
+                  format: double
+                  nullable: true
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/APIKey'
+
+  /api/v1/keys/{id}:
+    get:
+      tags: [Keys]
+      summary: Get API key by ID
+      operationId: getKey
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: API key
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/APIKey'
+    put:
+      tags: [Keys]
+      summary: Update API key
+      operationId: updateKey
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                group_id:
+                  type: integer
+                  format: int64
+                  nullable: true
+                status:
+                  type: string
+                  enum: [active, inactive]
+                ip_whitelist:
+                  type: array
+                  items:
+                    type: string
+                ip_blacklist:
+                  type: array
+                  items:
+                    type: string
+                quota:
+                  type: number
+                  format: double
+                  nullable: true
+                expires_at:
+                  type: string
+                  nullable: true
+                  description: ISO 8601 or empty string to clear
+                reset_quota:
+                  type: boolean
+                rate_limit_5h:
+                  type: number
+                  format: double
+                  nullable: true
+                rate_limit_1d:
+                  type: number
+                  format: double
+                  nullable: true
+                rate_limit_7d:
+                  type: number
+                  format: double
+                  nullable: true
+                reset_rate_limit_usage:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated API key
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/APIKey'
+    delete:
+      tags: [Keys]
+      summary: Delete API key
+      operationId: deleteKey
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Key deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  # ── Groups ──
+  /api/v1/groups/available:
+    get:
+      tags: [Groups]
+      summary: List available groups for current user
+      operationId: getAvailableGroups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Available groups
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Group'
+
+  /api/v1/groups/rates:
+    get:
+      tags: [Groups]
+      summary: Get group rate multipliers
+      operationId: getGroupRates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Group rates map
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        additionalProperties:
+                          type: number
+                          format: double
+
+  # ── Usage ──
+  /api/v1/usage:
+    get:
+      tags: [Usage]
+      summary: List usage logs (paginated)
+      operationId: listUsage
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - in: query
+          name: api_key_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: model
+          schema:
+            type: string
+        - in: query
+          name: request_type
+          schema:
+            type: string
+        - in: query
+          name: stream
+          schema:
+            type: boolean
+        - in: query
+          name: billing_type
+          schema:
+            type: integer
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            description: YYYY-MM-DD
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            description: YYYY-MM-DD
+        - in: query
+          name: timezone
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated usage logs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/PaginatedData'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  $ref: '#/components/schemas/UsageLog'
+
+  /api/v1/usage/{id}:
+    get:
+      tags: [Usage]
+      summary: Get usage log by ID
+      operationId: getUsage
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Usage log
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UsageLog'
+
+  /api/v1/usage/stats:
+    get:
+      tags: [Usage]
+      summary: Get usage statistics
+      operationId: getUsageStats
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: api_key_id
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [today, week, month]
+            default: today
+        - in: query
+          name: start_date
+          schema:
+            type: string
+        - in: query
+          name: end_date
+          schema:
+            type: string
+        - in: query
+          name: timezone
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UsageStats'
+
+  # ── Dashboard ──
+  /api/v1/usage/dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard statistics
+      operationId: getDashboardStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserDashboardStats'
+
+  /api/v1/usage/dashboard/trend:
+    get:
+      tags: [Dashboard]
+      summary: Get usage trend data
+      operationId: getDashboardTrend
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+        - in: query
+          name: end_date
+          schema:
+            type: string
+        - in: query
+          name: granularity
+          schema:
+            type: string
+            default: day
+        - in: query
+          name: timezone
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardTrendResponse'
+
+  /api/v1/usage/dashboard/models:
+    get:
+      tags: [Dashboard]
+      summary: Get model usage breakdown
+      operationId: getDashboardModels
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+        - in: query
+          name: end_date
+          schema:
+            type: string
+        - in: query
+          name: timezone
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model stats
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DashboardModelsResponse'
+
+  /api/v1/usage/dashboard/api-keys-usage:
+    post:
+      tags: [Dashboard]
+      summary: Batch get API key usage stats
+      operationId: batchApiKeysUsage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [api_key_ids]
+              properties:
+                api_key_ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                  maxItems: 100
+      responses:
+        '200':
+          description: Batch usage stats
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          stats:
+                            type: object
+                            additionalProperties:
+                              $ref: '#/components/schemas/BatchAPIKeyUsageStats'
+
+  # ── Announcements ──
+  /api/v1/announcements:
+    get:
+      tags: [Announcements]
+      summary: List user announcements
+      operationId: listAnnouncements
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: unread_only
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Announcements list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserAnnouncement'
+
+  /api/v1/announcements/{id}/read:
+    post:
+      tags: [Announcements]
+      summary: Mark announcement as read
+      operationId: markAnnouncementRead
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MessageResponse'
+
+  # ── Redeem ──
+  /api/v1/redeem:
+    post:
+      tags: [Redeem]
+      summary: Redeem a code
+      operationId: redeemCode
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Redeem result
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RedeemCode'
+
+  /api/v1/redeem/history:
+    get:
+      tags: [Redeem]
+      summary: Get redeem history
+      operationId: getRedeemHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Redeem history
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RedeemCode'
+
+  # ── Subscriptions ──
+  /api/v1/subscriptions:
+    get:
+      tags: [Subscriptions]
+      summary: List all subscriptions
+      operationId: listSubscriptions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscriptions list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserSubscription'
+
+  /api/v1/subscriptions/active:
+    get:
+      tags: [Subscriptions]
+      summary: List active subscriptions
+      operationId: listActiveSubscriptions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active subscriptions
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserSubscription'
+
+  /api/v1/subscriptions/progress:
+    get:
+      tags: [Subscriptions]
+      summary: Get subscription progress with usage windows
+      operationId: getSubscriptionProgress
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscription progress
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SubscriptionProgressInfo'
+
+  /api/v1/subscriptions/summary:
+    get:
+      tags: [Subscriptions]
+      summary: Get subscription summary
+      operationId: getSubscriptionSummary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscription summary
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SubscriptionSummary'

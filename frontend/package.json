@@ -1,36 +1,55 @@
 {
-  "name": "frontend",
+  "name": "bus2api-frontend",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview",
-    "test:run": "vitest run"
+    "dev": "nuxi dev",
+    "build": "nuxi build",
+    "preview": "nuxi preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "nuxi typecheck",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "generate:types": "openapi-typescript ../contracts/sub2api_openapi_v1.yaml -o types/api.d.ts",
+    "postinstall": "nuxi prepare"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@parcel/watcher"
+    ]
   },
   "dependencies": {
-    "@vueuse/core": "^14.2.1",
-    "axios": "^1.14.0",
+    "@nuxt/icon": "^2.2.1",
+    "@nuxt/ui": "^4.6.1",
+    "@nuxtjs/color-mode": "^4.0.0",
+    "@nuxtjs/i18n": "^10.2.4",
+    "@pinia/nuxt": "^0.11.3",
+    "date-fns": "^4.1.0",
     "echarts": "^6.0.0",
-    "lucide-vue-next": "^1.0.0",
+    "nuxt": "^4.4.2",
     "pinia": "^3.0.4",
     "vue": "^3.5.32",
     "vue-echarts": "^8.0.1",
-    "vue-i18n": "^10.0.8",
-    "vue-router": "^4.6.4"
+    "vue-router": "^5.0.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/node": "^24.12.2",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "@iconify-json/lucide": "^1.2.102",
+    "@iconify-json/simple-icons": "^1.2.78",
+    "@nuxt/eslint": "^1.15.2",
+    "@nuxt/test-utils": "^4.0.2",
+    "@nuxtjs/robots": "^6.0.7",
+    "@nuxtjs/sitemap": "^8.0.13",
     "@vue/test-utils": "^2.4.6",
-    "@vue/tsconfig": "^0.9.1",
-    "jsdom": "^26.1.0",
+    "eslint": "^10.2.1",
+    "happy-dom": "^20.9.0",
+    "jsdom": "^29.0.2",
+    "openapi-typescript": "^7.13.0",
+    "playwright": "^1.59.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.4",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.4",
     "vue-tsc": "^3.2.6"
   }
 }
