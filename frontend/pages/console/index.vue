@@ -8,12 +8,18 @@ import { formatMoney, formatNumber } from '~/utils/format'
 
 definePageMeta({ layout: 'console' })
 
+const authStore = useAuthStore()
 const { $api } = useApi()
 const pending = ref(true)
 const errorMessage = ref('')
 const stats = ref<UserDashboardStats | null>(null)
 const trend = ref<DashboardTrendResponse['trend']>([])
 const models = ref<DashboardModelsResponse['models']>([])
+const accountLabel = computed(() =>
+  authStore.user?.email
+  || authStore.user?.username
+  || '企业账户',
+)
 
 async function loadDashboard() {
   pending.value = true
@@ -44,9 +50,10 @@ onMounted(loadDashboard)
 <template>
   <section class="space-y-6">
     <div class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-      <p class="text-sm font-medium text-teal-700">Overview</p>
-      <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">用户控制台总览</h1>
-      <p class="mt-3 text-sm leading-6 text-slate-600">这里先聚焦可运营的核心指标：Key 数量、调用量、Token 和实际消费。</p>
+      <p class="text-sm font-medium text-teal-700">账户</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">账户余额</h1>
+      <p class="mt-6 text-5xl font-semibold tracking-tight text-slate-950">{{ formatMoney(authStore.user?.balance) }}</p>
+      <p class="mt-3 text-sm text-slate-500">{{ accountLabel }}</p>
     </div>
 
     <div v-if="errorMessage" class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">

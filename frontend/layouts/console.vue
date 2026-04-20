@@ -51,8 +51,8 @@ async function logout() {
         </NuxtLink>
 
         <div class="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p class="text-sm font-medium text-white">{{ authStore.user?.username || authStore.user?.email || '未登录用户' }}</p>
-          <p class="mt-1 text-xs text-slate-400">余额 {{ authStore.user?.balance ?? 0 }} / 并发 {{ authStore.user?.concurrency ?? 0 }}</p>
+          <p class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">当前账户</p>
+          <p class="mt-2 text-sm font-medium text-white">{{ authStore.user?.email || authStore.user?.username || '未登录用户' }}</p>
         </div>
 
         <nav class="grid gap-2">
