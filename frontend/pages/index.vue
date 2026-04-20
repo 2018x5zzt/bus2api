@@ -2,9 +2,9 @@
 const authStore = useAuthStore()
 const accessToken = useCookie<string | null>('access_token')
 const quickStart = [
-  '统一 API Key 管理，避免多人共用官方账号。',
-  '按用户实际调用量统计成本，控制台直接可查。',
-  '前端现阶段优先保证登录、Keys、Usage 和账单闭环。',
+  'OpenAI 兼容接口，统一接入多家模型能力。',
+  '按应用、团队或场景拆分 API Key，权限与成本更清晰。',
+  '调用记录、用量统计与账单视图集中管理，方便持续追踪。',
 ]
 
 onMounted(async () => {
@@ -19,13 +19,13 @@ onMounted(async () => {
     <div class="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
       <div>
         <p class="mb-4 inline-flex rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
-          现在的目标不是重做炫酷官网，而是把用户能用的前台先上线
+          OpenAI 兼容接口 · 多模型统一接入
         </p>
         <h1 class="max-w-3xl text-5xl font-semibold tracking-tight text-slate-950 lg:text-6xl">
-          让 Bus2API 在最短时间内具备可登录、可管理、可查账的前端。
+          为开发者提供稳定、清晰、可追踪的 AI API 接入体验。
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-          当前版本聚焦于最关键的用户路径：登录、API Keys、调用记录、账单与账户安全。先把核心动作做对，再继续补营销层和体验层。
+          Bus2API 通过统一域名与鉴权方式接入多家模型能力，并提供 API Key 管理、调用记录、用量统计与账单视图，帮助团队更快上线并持续掌控成本。
         </p>
         <div class="mt-8 flex flex-wrap gap-4">
           <NuxtLink
@@ -44,7 +44,7 @@ onMounted(async () => {
       </div>
 
       <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Launch Checklist</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-400">Why Bus2API</p>
         <div class="mt-6 grid gap-4">
           <div
             v-for="item in quickStart"
@@ -59,19 +59,19 @@ onMounted(async () => {
 
     <div class="mt-16 grid gap-4 md:grid-cols-3">
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
-        <p class="text-sm font-medium text-teal-700">登录闭环</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">邮箱密码 + 2FA</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">前端代理登录、刷新和退出，不要求后端额外增加中间层。</p>
+        <p class="text-sm font-medium text-teal-700">统一接入</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">兼容主流调用方式</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">通过统一接口与鉴权方式访问多家模型能力，减少业务侧重复适配成本。</p>
       </article>
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
-        <p class="text-sm font-medium text-teal-700">核心控制台</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">Overview / Keys / Usage</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">优先解决用户最频繁的日常操作，不在第一版里塞过多边缘功能。</p>
+        <p class="text-sm font-medium text-teal-700">账单透明</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">用量与消费持续可追踪</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">调用次数、Token 和实际消费在控制台统一记录，便于团队核对与优化成本。</p>
       </article>
       <article class="rounded-3xl border border-slate-200 bg-white p-6">
-        <p class="text-sm font-medium text-teal-700">可持续演进</p>
-        <h2 class="mt-3 text-xl font-semibold text-slate-950">新 Nuxt 前端继续承载</h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">上线先求稳，再逐步补全公告、模型广场、完整文档和更精细的营销页。</p>
+        <p class="text-sm font-medium text-teal-700">团队可管理</p>
+        <h2 class="mt-3 text-xl font-semibold text-slate-950">API Key 管理更清晰</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">按应用、团队或场景拆分 Key，配合调用记录和账单视图，让协作与对账更高效。</p>
       </article>
     </div>
   </section>

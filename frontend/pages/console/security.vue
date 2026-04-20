@@ -58,7 +58,7 @@ onMounted(loadSecurity)
     <div class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
       <p class="text-sm font-medium text-teal-700">Security</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">安全中心</h1>
-      <p class="mt-3 text-sm leading-6 text-slate-600">现阶段先把 TOTP 状态查看和一键撤销会话做出来，满足最核心的安全运维需求。</p>
+      <p class="mt-3 text-sm leading-6 text-slate-600">查看双重验证状态，并在需要时一键撤销全部会话，保护账户安全。</p>
     </div>
 
     <div v-if="errorMessage" class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">

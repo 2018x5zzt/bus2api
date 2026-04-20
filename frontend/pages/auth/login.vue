@@ -95,9 +95,9 @@ async function submit2FA() {
     <div class="grid w-full gap-8 lg:grid-cols-[0.9fr_1.1fr]">
       <div class="rounded-[2rem] border border-slate-200 bg-slate-950 p-8 text-slate-100">
         <p class="text-sm uppercase tracking-[0.24em] text-teal-300">Sign In</p>
-        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white">先把最常用的登录链路做稳。</h1>
+        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white">登录后继续管理你的 API 与账单。</h1>
         <p class="mt-4 text-sm leading-7 text-slate-300">
-          当前版本支持邮箱密码登录，并兼容后端已有的 TOTP 二次验证流程。登录成功后会直接进入控制台，不再依赖旧前端本地存 token 的方式。
+          支持邮箱密码登录，并兼容已启用的 TOTP 两步验证流程。登录成功后会直接进入控制台，继续查看 API Keys、调用记录和账单信息。
         </p>
       </div>
 

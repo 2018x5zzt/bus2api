@@ -155,7 +155,7 @@ onMounted(loadKeys)
         <div>
           <p class="text-sm font-medium text-teal-700">Keys</p>
           <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">API Key 管理</h1>
-          <p class="mt-3 text-sm leading-6 text-slate-600">第一版先保留最必要的动作：查看、创建、启停和删除。</p>
+          <p class="mt-3 text-sm leading-6 text-slate-600">在这里统一查看、创建、启停和删除 API Key，并快速核对使用状态与费用。</p>
         </div>
 
         <div class="flex flex-wrap gap-3">

@@ -116,9 +116,9 @@ onBeforeUnmount(() => {
     <div class="grid w-full gap-8 lg:grid-cols-[0.9fr_1.1fr]">
       <div class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
         <p class="text-sm uppercase tracking-[0.24em] text-teal-700">Register</p>
-        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950">公开注册先做基础闭环。</h1>
+        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950">创建账户，开始接入与管理 API。</h1>
         <p class="mt-4 text-sm leading-7 text-slate-600">
-          这里直接对接当前后端的注册能力。是否需要邮箱验证码、邀请码或促销码，由后端公开配置决定，前端只按现有字段呈现。
+          注册表单会根据站点配置动态展示邮箱验证码、邀请码或促销码等字段，提交后即可进入控制台继续完成后续操作。
         </p>
       </div>
 
@@ -134,7 +134,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-if="settings && settings.registration_enabled === false" class="rounded-2xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          当前后端配置已关闭公开注册，如需开通请先修改后端公开设置。
+          当前站点暂未开放公开注册，如需开通请联系管理员。
         </div>
 
         <form class="mt-6 grid gap-5" @submit.prevent="register">

@@ -67,7 +67,7 @@ onMounted(loadUsage)
     <div class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
       <p class="text-sm font-medium text-teal-700">Usage</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">调用记录与费用核对</h1>
-      <p class="mt-3 text-sm leading-6 text-slate-600">MVP 版本先把筛选、分页和详情核对做出来，方便你上线后快速排查用户账单问题。</p>
+      <p class="mt-3 text-sm leading-6 text-slate-600">按模型、Key 和时间范围筛选调用记录，快速核对请求详情、Token 用量与实际消费。</p>
     </div>
 
     <div v-if="errorMessage" class="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">

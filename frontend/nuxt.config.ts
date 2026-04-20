@@ -9,14 +9,54 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   routeRules: {
-    '/': { prerender: true },
-    '/models': { swr: 600 },
-    '/pricing': { swr: 600 },
-    '/announcements': { swr: 300 },
-    '/announcements/**': { swr: 300 },
-    '/docs/**': { prerender: true },
-    '/auth/**': { ssr: true },
-    '/console/**': { ssr: false },
+    '/': {
+      prerender: true,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/models': {
+      swr: 600,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/pricing': {
+      swr: 600,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/announcements': {
+      swr: 300,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/announcements/**': {
+      swr: 300,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/docs/**': {
+      prerender: true,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/auth/**': {
+      ssr: true,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
+    '/console/**': {
+      ssr: false,
+      headers: {
+        'cache-control': 'no-store',
+      },
+    },
   },
 
   nitro: {

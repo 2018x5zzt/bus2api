@@ -3,7 +3,7 @@
     <div class="rounded-3xl border border-slate-200 bg-white p-8">
       <h1 class="text-3xl font-semibold text-slate-950">公告会在登录后展示</h1>
       <p class="mt-4 text-sm leading-6 text-slate-600">
-        当前公告接口是用户登录态接口，因此公开页先不展示列表。后续如果要对外公开公告，需要单独补公开公告端点。
+        公告内容仅对已登录用户开放。登录后可查看系统通知、维护公告和账户相关消息。
       </p>
       <NuxtLink to="/auth/login" class="mt-6 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-medium text-white">
         登录查看
