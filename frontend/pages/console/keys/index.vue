@@ -65,7 +65,14 @@ async function loadKeys() {
 }
 
 async function createKey() {
-  if (!createForm.name || saving.value) {
+  if (saving.value) {
+    return
+  }
+
+  const trimmedName = createForm.name.trim()
+
+  if (!trimmedName) {
+    errorMessage.value = '请输入 API Key 名称。'
     return
   }
 
@@ -76,7 +83,7 @@ async function createKey() {
     await $api<APIKey>('/api/v1/keys', {
       method: 'POST',
       body: {
-        name: createForm.name,
+        name: trimmedName,
         group_id: createForm.group_id ? Number(createForm.group_id) : undefined,
         quota: createForm.quota ? Number(createForm.quota) : undefined,
       },
@@ -184,10 +191,10 @@ onMounted(loadKeys)
 
     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-slate-950">新建 Key</h2>
-      <div class="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto] lg:items-end">
+      <form class="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto] lg:items-end" @submit.prevent="createKey">
         <label class="grid gap-2 text-sm font-medium text-slate-700">
           名称
-          <input v-model="createForm.name" type="text" class="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-500" placeholder="例如：production-app">
+          <input v-model.trim="createForm.name" type="text" class="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-500" placeholder="例如：production-app">
         </label>
         <label class="grid gap-2 text-sm font-medium text-slate-700">
           分组
@@ -200,10 +207,10 @@ onMounted(loadKeys)
           额度上限（USD）
           <input v-model="createForm.quota" type="number" min="0" step="0.01" class="rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-teal-500" placeholder="留空表示不限">
         </label>
-        <button class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60" :disabled="saving" @click="createKey">
+        <button type="submit" class="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60" :disabled="saving">
           {{ saving ? '创建中...' : '创建' }}
         </button>
-      </div>
+      </form>
     </section>
 
     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
