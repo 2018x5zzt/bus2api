@@ -1,3 +1,11 @@
+import {
+  resolveGatewayModeEnv,
+  resolveSub2apiBaseUrlEnv,
+} from './utils/runtime-config'
+
+const gatewayMode = resolveGatewayModeEnv(process.env)
+const sub2apiBaseUrl = resolveSub2apiBaseUrlEnv(process.env)
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/ui',
@@ -85,12 +93,12 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    gatewayMode: process.env.NUXT_GATEWAY_MODE || process.env.NUXT_PUBLIC_GATEWAY_MODE || 'core',
-    sub2apiBaseUrl: 'http://localhost:8080',
+    gatewayMode,
+    sub2apiBaseUrl,
     public: {
       siteName: '老狗 API',
       apiBaseUrl: '',
-      gatewayMode: process.env.NUXT_PUBLIC_GATEWAY_MODE || process.env.NUXT_GATEWAY_MODE || 'core',
+      gatewayMode,
     },
   },
 
