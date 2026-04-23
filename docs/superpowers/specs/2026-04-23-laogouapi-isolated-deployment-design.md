@@ -28,8 +28,8 @@ The current environment contains:
 - `/root/sub2api-deploy`, which runs the active `sub2api` backend stack
 - `/root/sub2api-src`, which contains the source repository with `origin` and `upstream` remotes
 - `/root/bus2api`, which contains the Nuxt frontend and existing deployment-oriented documentation
-- An active `bus2api` production container on host port `8082`
-- An active `enterprise-bff` container on host port `8093`
+- An active public frontend container `bus2api-frontend-enterprise-console-v3` on host port `8082`
+- An active enterprise middle-layer container `enterprise-bff-enterprise-console-v3` on host port `127.0.0.1:8093`
 - An active `sub2api2` container on host port `11451`
 
 The current `/root/sub2api-deploy` backend is not built from upstream `main`. It is built from the local `xlabapi` line. The new `laogouapi` stack must not reuse its code, PostgreSQL, Redis, or `/app/data`.
@@ -157,12 +157,9 @@ Rationale:
 - Validation can be completed locally before the public entrypoint changes
 - Public traffic can remain on the old `8082` path until the new stack is confirmed healthy
 
-After validation, public cutover can happen by either:
+After validation, public cutover in this environment is performed by moving host port `8082` from `bus2api-frontend-enterprise-console-v3` to `bus2api-frontend-laogou` only after localhost validation passes.
 
-- Changing the frontend container host port mapping to the public target port
-- Repointing the existing fronting proxy or tunnel to the new localhost validation port
-
-The exact public-entry mechanism can be chosen during implementation, but the cutover must preserve a one-command rollback to the old frontend path.
+If there is an upstream proxy or tunnel in front of `8082`, it may stay unchanged as long as it continues to target the same public attachment after the switch.
 
 ## Data and State Isolation
 
@@ -235,7 +232,7 @@ The cutover should follow this order:
 3. Start the isolated backend stack on localhost-only staging ports
 4. Start `bus2api-frontend-laogou` in core mode against `http://laogouapi:8080`
 5. Verify the new backend and frontend locally
-6. Change the public frontend entrypoint to the new stack
+6. Move public host port `8082` from `bus2api-frontend-enterprise-console-v3` to `bus2api-frontend-laogou`
 7. Re-run public validation against the live hostname
 8. Only after successful live validation, decide whether to stop the old `bus2api` and `enterprise-bff` containers
 
@@ -245,13 +242,13 @@ Rollback must be operationally cheap.
 
 Rules:
 
-- The old public frontend stack stays available until the new stack is live and verified
+- The old frontend container and its configuration stay intact until the new stack is live and verified
 - Public cutover must not require destroying the old stack first
 - New and old stacks must not share mutable backend state
 
 Rollback steps:
 
-1. Repoint the public entrypoint back to the old frontend path
+1. Move public host port `8082` back to `bus2api-frontend-enterprise-console-v3`
 2. Confirm the old public hostname serves the previous frontend again
 3. Stop only the new `laogouapi` stack if necessary
 4. Preserve `/root/laogouapi-deploy` for later inspection unless the failure requires cleanup
