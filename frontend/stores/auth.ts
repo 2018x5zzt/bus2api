@@ -1,7 +1,7 @@
-import type { UserWithRunMode } from '~/types/api-helpers'
+import type { ConsoleUser, UserWithRunMode } from '~/types/api-helpers'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<UserWithRunMode | null>(null)
+  const user = ref<ConsoleUser | null>(null)
   const initialized = ref(false)
   const loading = ref(false)
 
@@ -31,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setUser(nextUser: UserWithRunMode): void {
+  function setUser(nextUser: ConsoleUser): void {
     user.value = nextUser
     initialized.value = true
   }

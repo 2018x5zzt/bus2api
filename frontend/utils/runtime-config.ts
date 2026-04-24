@@ -10,3 +10,9 @@ export function resolveGatewayModeEnv(env: RuntimeEnv): GatewayMode {
 export function resolveSub2apiBaseUrlEnv(env: RuntimeEnv): string {
   return env.NUXT_SUB2API_BASE_URL || 'http://localhost:8080'
 }
+
+export function resolvePublicApiBaseUrlEnv(env: RuntimeEnv): string {
+  return env.NUXT_API_PROXY_BASE_URL
+    || env.NUXT_SUB2API_BASE_URL
+    || 'http://localhost:8080'
+}

@@ -1,9 +1,11 @@
 import {
   resolveGatewayModeEnv,
+  resolvePublicApiBaseUrlEnv,
   resolveSub2apiBaseUrlEnv,
 } from './utils/runtime-config'
 
 const gatewayMode = resolveGatewayModeEnv(process.env)
+const publicApiBaseUrl = resolvePublicApiBaseUrlEnv(process.env)
 const sub2apiBaseUrl = resolveSub2apiBaseUrlEnv(process.env)
 
 export default defineNuxtConfig({
@@ -94,6 +96,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     gatewayMode,
+    publicApiBaseUrl,
     sub2apiBaseUrl,
     public: {
       siteName: '老狗 API',

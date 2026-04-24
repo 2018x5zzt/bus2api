@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   resolveGatewayModeEnv,
+  resolvePublicApiBaseUrlEnv,
   resolveSub2apiBaseUrlEnv,
 } from '~/utils/runtime-config'
 
@@ -28,5 +29,20 @@ describe('resolveSub2apiBaseUrlEnv', () => {
 
   it('falls back to the local development target', () => {
     expect(resolveSub2apiBaseUrlEnv({})).toBe('http://localhost:8080')
+  })
+})
+
+describe('resolvePublicApiBaseUrlEnv', () => {
+  it('uses an explicit public api proxy target when provided', () => {
+    expect(resolvePublicApiBaseUrlEnv({
+      NUXT_API_PROXY_BASE_URL: 'http://sub2api:8080',
+      NUXT_SUB2API_BASE_URL: 'http://enterprise-bff:8090',
+    })).toBe('http://sub2api:8080')
+  })
+
+  it('falls back to the shared backend target when unset', () => {
+    expect(resolvePublicApiBaseUrlEnv({
+      NUXT_SUB2API_BASE_URL: 'http://enterprise-bff:8090',
+    })).toBe('http://enterprise-bff:8090')
   })
 })

@@ -1,21 +1,25 @@
 import type { H3Event } from 'h3'
-import { buildApiV1ProxyHeaders, buildApiV1ProxyTarget } from '~/server/utils/api-v1-proxy'
+import {
+  buildPublicApiProxyHeaders,
+  buildPublicApiProxyTarget,
+} from '~/server/utils/public-api-proxy'
 
 const RESPONSE_HOP_BY_HOP_HEADERS = new Set([
+  'connection',
   'content-length',
+  'keep-alive',
   'transfer-encoding',
 ])
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
-  const requestUrl = new URL(event.node.req.url || '/api/v1', 'http://localhost')
+  const requestUrl = new URL(event.node.req.url || '/v1', 'http://localhost')
   const method = event.node.req.method || 'GET'
   const path = event.context.params?.path || ''
-  const targetUrl = buildApiV1ProxyTarget(
-    config.sub2apiBaseUrl,
+  const targetUrl = buildPublicApiProxyTarget(
+    config.publicApiBaseUrl || config.sub2apiBaseUrl,
     path,
     requestUrl.search,
-    config.gatewayMode,
   )
 
   const body = await readProxyRequestBody(event, method)
@@ -25,10 +29,7 @@ export default defineEventHandler(async (event) => {
   try {
     upstream = await fetch(targetUrl, {
       method,
-      headers: buildApiV1ProxyHeaders(event.node.req.headers, {
-        gatewayMode: config.gatewayMode,
-        method,
-      }),
+      headers: buildPublicApiProxyHeaders(event.node.req.headers),
       body,
       redirect: 'manual',
     })
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 502,
       statusMessage: 'Bad Gateway',
-      message: 'Failed to reach sub2api core backend',
+      message: 'Failed to reach public API upstream',
     })
   }
 
@@ -49,11 +50,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const payload = method === 'HEAD'
-    ? undefined
-    : await upstream.arrayBuffer()
-
-  return new Response(payload, {
+  return new Response(method === 'HEAD' ? undefined : upstream.body, {
     status: upstream.status,
     headers: responseHeaders,
   })

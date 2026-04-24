@@ -29,6 +29,10 @@ export type AuthResponse = components['schemas']['AuthResponse']
 export type TotpLoginResponse = components['schemas']['TotpLoginResponse']
 export type RefreshTokenResponse = components['schemas']['RefreshTokenResponse']
 export type UserWithRunMode = components['schemas']['UserWithRunMode']
+export type ConsoleUser = UserWithRunMode & {
+  enterprise_display_name?: string
+  enterprise_name?: string
+}
 
 export type UserDashboardStats = components['schemas']['UserDashboardStats']
 export type TrendDataPoint = components['schemas']['TrendDataPoint']

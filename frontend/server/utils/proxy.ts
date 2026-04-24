@@ -25,7 +25,7 @@ export async function proxyToBackend<T>(
     },
   })
 
-  return res
+  return res as T
 }
 
 interface TokenPayload {
