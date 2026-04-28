@@ -151,6 +151,31 @@ async function copyKey(value: string, id: number) {
   }
 }
 
+function quotaUsageLabel(item: APIKey) {
+  return `${formatMoney(item.quota_used)} / ${item.quota > 0 ? formatMoney(item.quota) : '不限'}`
+}
+
+function quotaProgressLabel(item: APIKey) {
+  if (item.quota <= 0) {
+    return '不限'
+  }
+
+  const used = item.quota_used || 0
+  const remaining = Math.max(item.quota - used, 0)
+  const percent = Math.min(Math.round((used / item.quota) * 100), 100)
+  return `剩余 ${formatMoney(remaining)} · ${percent}%`
+}
+
+function hasRateLimit(item: APIKey) {
+  return (item.rate_limit_5h ?? 0) > 0
+    || (item.rate_limit_1d ?? 0) > 0
+    || (item.rate_limit_7d ?? 0) > 0
+}
+
+function rateLimitWindow(used: number | null | undefined, limit: number | null | undefined) {
+  return `${formatMoney(used ?? 0)} / ${(limit ?? 0) > 0 ? formatMoney(limit) : '不限'}`
+}
+
 watch([page, status], loadKeys)
 onMounted(loadKeys)
 </script>
@@ -222,6 +247,8 @@ onMounted(loadKeys)
               <th class="px-3 py-3 font-medium">Key</th>
               <th class="px-3 py-3 font-medium">分组</th>
               <th class="px-3 py-3 font-medium">状态</th>
+              <th class="px-3 py-3 font-medium">额度</th>
+              <th class="px-3 py-3 font-medium">限速</th>
               <th class="px-3 py-3 font-medium">今日消费</th>
               <th class="px-3 py-3 font-medium">总消费</th>
               <th class="px-3 py-3 font-medium">最近使用</th>
@@ -232,7 +259,7 @@ onMounted(loadKeys)
             <tr v-for="item in keys?.items || []" :key="item.id" class="border-b border-slate-100 align-top last:border-0">
               <td class="px-3 py-4">
                 <p class="font-medium text-slate-950">{{ item.name }}</p>
-                <p class="mt-1 text-xs text-slate-500">ID {{ item.id }} · 已用 {{ formatMoney(item.quota_used) }}</p>
+                <p class="mt-1 text-xs text-slate-500">ID {{ item.id }}</p>
               </td>
               <td class="px-3 py-4">
                 <div class="flex items-center gap-2">
@@ -247,6 +274,20 @@ onMounted(loadKeys)
                 <span class="rounded-full px-3 py-1 text-xs font-medium" :class="item.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'">
                   {{ item.status === 'active' ? '启用' : '停用' }}
                 </span>
+              </td>
+              <td class="px-3 py-4">
+                <div class="grid gap-1 text-slate-950">
+                  <span>{{ quotaUsageLabel(item) }}</span>
+                  <span class="text-xs text-slate-500">{{ quotaProgressLabel(item) }}</span>
+                </div>
+              </td>
+              <td class="px-3 py-4">
+                <div v-if="hasRateLimit(item)" class="grid gap-1 text-xs text-slate-700">
+                  <span>5h: {{ rateLimitWindow(item.usage_5h, item.rate_limit_5h) }}</span>
+                  <span>1d: {{ rateLimitWindow(item.usage_1d, item.rate_limit_1d) }}</span>
+                  <span>7d: {{ rateLimitWindow(item.usage_7d, item.rate_limit_7d) }}</span>
+                </div>
+                <span v-else class="text-slate-500">不限</span>
               </td>
               <td class="px-3 py-4 text-slate-950">{{ formatMoney(usageStats[String(item.id)]?.today_actual_cost) }}</td>
               <td class="px-3 py-4 text-slate-950">{{ formatMoney(usageStats[String(item.id)]?.total_actual_cost) }}</td>
@@ -263,7 +304,7 @@ onMounted(loadKeys)
               </td>
             </tr>
             <tr v-if="!pending && (keys?.items.length || 0) === 0">
-              <td colspan="8" class="px-3 py-8 text-center text-slate-500">还没有 API Key，可以先创建一个。</td>
+              <td colspan="10" class="px-3 py-8 text-center text-slate-500">还没有 API Key，可以先创建一个。</td>
             </tr>
           </tbody>
         </table>
